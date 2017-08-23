@@ -41,10 +41,11 @@ defmodule Mix.Tasks.Phx.Routes do
       Mix.raise "umbrella applications require an explicit router to be given to phx.routes"
     end
     web_router = web_mod(base, "Router")
+    new_web_router = new_web_mod(base, "Router")
     old_router = app_mod(base, "Router")
 
-    loaded(web_router) || loaded(old_router) || Mix.raise """
-    no router found at #{inspect web_router} or #{inspect old_router}.
+    loaded(new_web_router) || loaded(web_router) || loaded(old_router) || Mix.raise """
+    no router found at #{inspect new_web_router} or #{inspect web_router} or #{inspect old_router}.
     An explicit router module may be given to phx.routes.
     """
   end
@@ -58,4 +59,6 @@ defmodule Mix.Tasks.Phx.Routes do
   defp app_mod(base, name), do: Module.concat([base, name])
 
   defp web_mod(base, name), do: Module.concat(["#{base}Web", name])
+
+  defp new_web_mod(base, name), do: Module.concat(["#{base}.Web", name])
 end

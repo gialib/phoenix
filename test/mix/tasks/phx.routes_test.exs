@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Phx.RoutesTest do
   end
 
   test "prints error when implicit router cannot be found" do
-    assert_raise Mix.Error, ~r/no router found at FooWeb.Router or Foo.Router/, fn ->
+    assert_raise Mix.Error, ~r/no router found at Foo.Web.Router or FooWeb.Router or Foo.Router/, fn ->
       Mix.Tasks.Phx.Routes.run([], Foo)
     end
   end
