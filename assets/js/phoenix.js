@@ -667,7 +667,9 @@ const Serializer = {
  * ```
  * @param {Function} opts.logger - The optional function for specialized logging, ie:
  * ```javascript
- * logger: (kind, msg, data) => { console.log(`${kind}: ${msg}`, data) }
+ * function(kind, msg, data) {
+ *   console.log(`${kind}: ${msg}`, data)
+ * }
  * ```
  *
  * @param {number}  opts.longpollerTimeout - The maximum timeout of a long poll AJAX request.
@@ -1032,13 +1034,18 @@ export class LongPoll {
 export class Ajax {
 
   static request(method, endPoint, accept, body, timeout, ontimeout, callback){
-    if(window.XDomainRequest){
-      let req = new XDomainRequest() // IE8, IE9
-      this.xdomainRequest(req, method, endPoint, body, timeout, ontimeout, callback)
+    if(typeof window !== 'undefined'){
+      if(window.XDomainRequest){
+        let req = new XDomainRequest() // IE8, IE9
+        this.xdomainRequest(req, method, endPoint, body, timeout, ontimeout, callback)
+      } else {
+        let req = window.XMLHttpRequest ?
+                    new window.XMLHttpRequest() : // IE7+, Firefox, Chrome, Opera, Safari
+                    new ActiveXObject("Microsoft.XMLHTTP") // IE6, IE5
+        this.xhrRequest(req, method, endPoint, accept, body, timeout, ontimeout, callback)
+      }
     } else {
-      let req = window.XMLHttpRequest ?
-                  new window.XMLHttpRequest() : // IE7+, Firefox, Chrome, Opera, Safari
-                  new ActiveXObject("Microsoft.XMLHTTP") // IE6, IE5
+      let req = new XMLHttpRequest(); // tvOS support
       this.xhrRequest(req, method, endPoint, accept, body, timeout, ontimeout, callback)
     }
   }
@@ -1154,7 +1161,9 @@ export var Presence = {
       let currentPresence = state[key]
       state[key] = newPresence
       if(currentPresence){
-        state[key].metas.unshift(...currentPresence.metas)
+        let joinedRefs = state[key].metas.map(m => m.phx_ref)
+        let curMetas = currentPresence.metas.filter(m => joinedRefs.indexOf(m.phx_ref) < 0)
+        state[key].metas.unshift(...curMetas);
       }
       onJoin(key, currentPresence, newPresence)
     })

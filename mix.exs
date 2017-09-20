@@ -24,7 +24,8 @@ defmodule Phoenix.Mixfile do
         main: "overview",
         logo: "logo.png",
         extra_section: "GUIDES",
-        assets: "deps/phoenix_guides/docs/assets",
+        assets: "guides/docs/assets",
+        formatters: ["html", "epub"],
         extras: extras()
       ],
       aliases: aliases(),
@@ -61,9 +62,8 @@ defmodule Phoenix.Mixfile do
       {:gettext, "~> 0.8", only: :test},
 
       # Docs dependencies
-      {:ex_doc, "~> 0.16", only: :docs},
+      {:ex_doc, "~> 0.16.4", only: :docs},
       {:inch_ex, "~> 0.2", only: :docs},
-      {:phoenix_guides, git: "https://github.com/phoenixframework/phoenix_guides.git", compile: false, app: false, only: :docs},
 
       # Test dependencies
       {:phoenix_html, "~> 2.10", only: :test},
@@ -102,33 +102,18 @@ defmodule Phoenix.Mixfile do
       "channels.md": [group: "Guides"],
       "ecto.md": [group: "Guides"],
       "contexts.md": [group: "Guides"],
+      "phoenix_mix_tasks.md": [group: "Guides"],
+      "errors.md": [group: "Guides"],
 
       "testing/testing.md": [group: "Testing"],
-      "testing/testing_models.md": [group: "Testing"],
+      "testing/testing_schemas.md": [group: "Testing"],
       "testing/testing_controllers.md": [group: "Testing"],
       "testing/testing_channels.md": [group: "Testing"],
 
       "deployment/deployment.md": [group: "Deployment"],
-      "deployment/heroku.md": [group: "Deployment"],
-
-      "bonus_guides/upgrading_phoenix.md": [group: "Bonus Guides"],
-      "bonus_guides/custom_primary_key.md": [group: "Bonus Guides"],
-      "bonus_guides/using_mysql.md": [group: "Bonus Guides"],
-      "bonus_guides/static_assets.md": [group: "Bonus Guides"],
-      "bonus_guides/mix_tasks.md": [group: "Bonus Guides"],
-      "bonus_guides/task_supervisor.md": [group: "Bonus Guides"],
-      "bonus_guides/file_uploads.md": [group: "Bonus Guides"],
-      "bonus_guides/sending_email_with_mailgun.md": [group: "Bonus Guides"],
-      "bonus_guides/sending_email_with_smtp.md": [group: "Bonus Guides"],
-      "bonus_guides/sessions.md": [group: "Bonus Guides"],
-      "bonus_guides/custom_errors.md": [group: "Bonus Guides"],
-      "bonus_guides/using_ssl.md": [group: "Bonus Guides"],
-      "bonus_guides/phoenix_behind_proxy.md": [group: "Bonus Guides"],
-      "bonus_guides/config.md": [group: "Bonus Guides"],
-      "bonus_guides/learning_elixir.md": [group: "Bonus Guides"],
-      "bonus_guides/seeding_data.md": [group: "Bonus Guides"]
+      "deployment/heroku.md": [group: "Deployment"]
     ]
-    |> Enum.map(fn {file, opts} -> {:"deps/phoenix_guides/docs/#{file}", opts} end)
+    |> Enum.map(fn {file, opts} -> {:"guides/docs/#{file}", opts} end)
   end
 
   defp aliases do

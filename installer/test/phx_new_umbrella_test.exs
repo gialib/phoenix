@@ -35,8 +35,11 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
 
       assert_file root_path(@app, "README.md")
       assert_file root_path(@app, ".gitignore")
+      assert_file( root_path(@app, ".gitignore"), ~r/\n$/)
+
       assert_file app_path(@app, "README.md")
       assert_file app_path(@app, ".gitignore")
+      assert_file( app_path(@app, ".gitignore"), ~r/\n$/)
       assert_file web_path(@app, "README.md")
       assert_file root_path(@app, "mix.exs"), fn file ->
         assert file =~ "apps_path: \"apps\""
@@ -70,6 +73,7 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
       end
 
       assert_file app_path(@app, "lib/#{@app}/application.ex"), ~r/defmodule PhxUmb.Application do/
+      assert_file app_path(@app, "lib/#{@app}/application.ex"), ~r/supervisor\(PhxUmb.Repo, \[\]\)/
       assert_file app_path(@app, "lib/#{@app}.ex"), ~r/defmodule PhxUmb do/
       assert_file app_path(@app, "mix.exs"), ~r/mod: {PhxUmb.Application, \[\]}/
       assert_file app_path(@app, "test/test_helper.exs")
@@ -103,6 +107,7 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
 
       # Brunch
       assert_file web_path(@app, ".gitignore"), "/node_modules"
+      assert_file( web_path(@app, ".gitignore"),  ~r/\n$/)
       assert_file web_path(@app, "assets/brunch-config.js"), ~s("js/app.js": ["js/app"])
       assert_file web_path(@app, "config/dev.exs"), fn file ->
         assert file =~ "watchers: [node:"
@@ -186,6 +191,7 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
 
       # No Brunch
       refute File.read!(web_path(@app, ".gitignore")) |> String.contains?("/node_modules")
+      assert_file( web_path(@app, ".gitignore"),  ~r/\n$/)
       assert_file web_path(@app, "config/dev.exs"), ~r/watchers: \[\]/
 
       # No Brunch & No Html
@@ -212,6 +218,8 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
       assert_file web_path(@app, "config/dev.exs"), &refute(&1 =~ config)
       assert_file web_path(@app, "config/test.exs"), &refute(&1 =~ config)
       assert_file web_path(@app, "config/prod.secret.exs"), &refute(&1 =~ config)
+
+      assert_file app_path(@app, "lib/#{@app}/application.ex"), ~r/Supervisor.start_link\(\[\]/
 
       # No HTML
       assert File.exists?(web_path(@app, "test/#{@app}_web/controllers"))
@@ -242,6 +250,7 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
       Mix.Tasks.Phx.New.run([@app, "--umbrella", "--no-brunch"])
 
       assert_file web_path(@app, ".gitignore")
+      assert_file( web_path(@app, ".gitignore"),  ~r/\n$/)
       assert_file web_path(@app, "priv/static/css/app.css")
       assert_file web_path(@app, "priv/static/favicon.ico")
       assert_file web_path(@app, "priv/static/images/phoenix.png")
@@ -472,6 +481,7 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
 
         # Brunch
         assert_file "another/.gitignore", "/node_modules"
+        assert_file "another/.gitignore",  ~r/\n$/
         assert_file "another/assets/brunch-config.js", ~s("js/app.js": ["js/app"])
         assert_file "another/config/dev.exs", "watchers: [node:"
         assert_file "another/assets/static/favicon.ico"

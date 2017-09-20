@@ -203,7 +203,7 @@ defmodule Phoenix.Controller do
   the render block and instead return the unmatched value. In this case,
   imagine `Blog.fetch_post/2` returned `{:error, :not_found}` or
   `Authorizer.authorize/3` returned `{:error, :unauthorized}`. For cases
-  where these datastructures serve as return values across multiple
+  where these data structures serve as return values across multiple
   boundaries in our domain, a single fallback module can be used to
   translate the value into a valid response. For example, you could
   write the following fallback controller to handle the above values:
@@ -827,6 +827,8 @@ defmodule Phoenix.Controller do
       filename extension
     * `:charset` - the charset of the file, such as "utf-8".
       Defaults to none.
+    * `:offset` - the bytes to offset when reading. Defualts to `0`.
+    * `:length` - the total bytes to read. Defaults to `:all`.
 
   ## Examples
 
@@ -852,9 +854,11 @@ defmodule Phoenix.Controller do
 
   def send_download(conn, {:file, path}, opts) do
     filename = opts[:filename] || Path.basename(path)
+    offset = opts[:offset] || 0
+    length = opts[:length] || :all
     conn
     |> prepare_send_download(filename, opts)
-    |> send_file(conn.status || 200, path)
+    |> send_file(conn.status || 200, path, offset, length)
   end
 
   def send_download(conn, {:binary, contents}, opts) do
