@@ -306,7 +306,7 @@ Whenever possible prefer to pass a `conn` in place of an `Endpoint`.
 
 ## Nested Resources
 
-It is also possible to nest resources in a Phoenix router. Let's say we also have a `posts` resource which has a one to many relationship with `users`. That is to say, a user can create many posts, and an individual post belongs to only one user. We can represent that by adding a nested route in `lib/hello_web/router.ex` like this:
+It is also possible to nest resources in a Phoenix router. Let's say we also have a `posts` resource which has a many-to-one relationship with `users`. That is to say, a user can create many posts, and an individual post belongs to only one user. We can represent that by adding a nested route in `lib/hello_web/router.ex` like this:
 
 ```elixir
 resources "/users", UserController do
@@ -375,8 +375,6 @@ scope "/admin" do
   resources "/reviews", HelloWeb.Admin.ReviewController
 end
 ```
-
-Note that Phoenix will assume that the path we set ought to begin with a slash, so `scope "/admin" do` and `scope "admin" do` will both produce the same results.
 
 Note also, that the way this scope is currently defined, we need to fully qualify our controller name, `HelloWeb.Admin.ReviewController`. We'll fix that in a minute.
 

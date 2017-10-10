@@ -100,7 +100,7 @@ $ mix ecto.migrate
 [info]  == Migrated in 0.0s
 ```
 
-Before jump into the generated code, let's start the server with `mix phx.server` and visit [http://localhost:4000/users](http://localhost:4000/users). Let's follow the "New User" link and click the "Submit" button without providing any input. We should be greeted with the following output:
+Before we jump into the generated code, let's start the server with `mix phx.server` and visit [http://localhost:4000/users](http://localhost:4000/users). Let's follow the "New User" link and click the "Submit" button without providing any input. We should be greeted with the following output:
 
 ```
 Oops, something went wrong! Please check the errors below.
@@ -910,15 +910,17 @@ Next, we added an `:authorized_page` plug that makes use of plug's guard clause 
 With our new plugs in place, we can now modify our `create`, `edit`, `update`, and `delete` actions to make use of the new values in the connection assigns:
 
 ```elixir
-   def edit(conn, %{"id" => id}) do
--    page = CMS.get_page!(id)
--    changeset = CMS.change_page(page)
--    render(conn, "edit.html", page: page, changeset: changeset)
-+    changeset = CMS.change_page(conn.assigns.page)
-+    render(conn, "edit.html", changeset: changeset)
-   end
+  def edit(conn, _) do
+-   page = CMS.get_page!(id)
+-   changeset = CMS.change_page(page)
++   changeset = CMS.change_page(conn.assigns.page)
+-   render(conn, "edit.html", page: page, changeset: changeset)
++   render(conn, "edit.html", changeset: changeset)
+  end
 
-  def create(conn, %{"page" => page_params}) do
+- def create(conn, %{"id" => id, "page" => page_params}) do
++ def create(conn, %{"page" => page_params}) do
+-   case CMS.create_page(page_params) do
 +   case CMS.create_page(conn.assigns.current_author, page_params) do
       {:ok, page} ->
         conn
@@ -929,20 +931,25 @@ With our new plugs in place, we can now modify our `create`, `edit`, `update`, a
     end
   end
 
-  def update(conn, %{"page" => page_params}) do
+- def update(conn, %{"id" => id, "page" => page_params}) do
++ def update(conn, %{"page" => page_params}) do
+-   page = CMS.get_page!(id)
+-   case CMS.update_page(page, page_params) do
 +   case CMS.update_page(conn.assigns.page, page_params) do
       {:ok, page} ->
         conn
         |> put_flash(:info, "Page updated successfully.")
         |> redirect(to: cms_page_path(conn, :show, page))
       {:error, %Ecto.Changeset{} = changeset} ->
-        render(conn, "edit.html", changeset: changeset)
+-       render(conn, "edit.html", page: page, changeset: changeset)
++       render(conn, "edit.html", changeset: changeset)
     end
   end
 
 - def delete(conn, %{"id" => id}) do
 + def delete(conn, _) do
 -   page = CMS.get_page!(id)
+-   {:ok, _page} = CMS.delete_page(page)
 +   {:ok, _page} = CMS.delete_page(conn.assigns.page)
 
     conn
@@ -951,7 +958,7 @@ With our new plugs in place, we can now modify our `create`, `edit`, `update`, a
   end
 ```
 
-We modified the `create` action to grab our `current_author` from the connection assigns, which was placed there by our `authenticate_user` plug in the router. We then passed our current author into `CMS.create_page` where it will be used to associate the author to the new page. Next, we changed the `update` action to pass the `conn.assigns.page` into `CMS.update_page/2`, rather than fetching it directly in the action. Since our `authorize_page` plug already fetched the page and placed it into the assigns, we can simply reference it here in the action. Similarly, we updated the `delete` action to pass the `conn.assigns.page` into the `CMS` rather than fetching the page in the action.
+We modified the `create` action to grab our `current_author` from the connection assigns, which was placed there by our `require_existing_author` plug. We then passed our current author into `CMS.create_page` where it will be used to associate the author to the new page. Next, we changed the `update` action to pass the `conn.assigns.page` into `CMS.update_page/2`, rather than fetching it directly in the action. Since our `authorize_page` plug already fetched the page and placed it into the assigns, we can simply reference it here in the action. Similarly, we updated the `delete` action to pass the `conn.assigns.page` into the `CMS` rather than fetching the page in the action.
 
 To complete the web changes, let's display the author when showing a page. First, open up `lib/hello_web/views/cms/page_view.ex` and add a helper function to handle formatting the author's name:
 

@@ -64,7 +64,7 @@ defmodule Phoenix.Endpoint do
 
   For dynamically configuring the endpoint, such as loading data
   from environment variables or configuration files, Phoenix invokes
-  the `init/2` callback on the endpoint, passing a `:supervivsor`
+  the `init/2` callback on the endpoint, passing a `:supervisor`
   atom as first argument and the endpoint configuration as second.
 
   All of Phoenix configuration, except the Compile-time configuration
@@ -121,7 +121,7 @@ defmodule Phoenix.Endpoint do
       forcing browsers to always use HTTPS. If an unsafe request (HTTP) is sent,
       it redirects to the HTTPS version using the `:host` specified in the `:url`
       configuration. To dynamically redirect to the `host` of the current request,
-      `:host` must be set `nil`.
+      set `:host` in the `:force_ssl` configuration to `nil`.
 
     * `:secret_key_base` - a secret key used as a base to generate secrets
       for encrypting and signing data. For example, cookies and tokens
@@ -670,6 +670,7 @@ defmodule Phoenix.Endpoint do
       Generates a route to a static file in `priv/static`.
       """
       def static_path(path) do
+        Phoenix.Endpoint.validate_local_url(path)
         Phoenix.Config.cache(__MODULE__, :__phoenix_static__,
                              &Phoenix.Endpoint.Supervisor.static_path/1) <>
         Phoenix.Config.cache(__MODULE__, {:__phoenix_static__, path},
@@ -814,4 +815,22 @@ defmodule Phoenix.Endpoint do
     end
   end
   defp tear_alias(other), do: other
+
+  @invalid_local_url_chars ["\\"]
+  @doc false
+  def validate_local_url("//" <> _ = path), do: raise_invalid_url(path)
+  def validate_local_url("/" <> _ = path) do
+    if String.contains?(path, @invalid_local_url_chars) do
+      raise ArgumentError, "unsafe characters detected for path #{inspect path}"
+    else
+      path
+    end
+  end
+  def validate_local_url(path), do: raise_invalid_url(path)
+
+  @spec raise_invalid_url(term()) :: no_return()
+  defp raise_invalid_url(path) do
+    raise ArgumentError, "expected a local path but was #{inspect path}"
+  end
 end
+
