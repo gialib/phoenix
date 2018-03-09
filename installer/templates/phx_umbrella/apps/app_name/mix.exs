@@ -4,12 +4,12 @@ defmodule <%= app_module %>.Mixfile do
   def project do
     [
       app: :<%= app_name %>,
-      version: "0.0.1",
+      version: "0.1.0",
       build_path: "../../_build",
       config_path: "../../config/config.exs",
       deps_path: "../../deps",
       lockfile: "../../mix.lock",
-      elixir: "~> 1.4",
+      elixir: "~> 1.5",
       elixirc_paths: elixirc_paths(Mix.env),
       start_permanent: Mix.env == :prod,
       aliases: aliases(),

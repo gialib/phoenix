@@ -148,6 +148,14 @@ defmodule Phoenix.Endpoint do
       to `:port`, when given a tuple like `{:system, "HOST"}`, the host
       will be referenced from `System.get_env("HOST")` at runtime.
 
+      The `:scheme` option accepts `"http"` and `"https"` values. Default value
+      is infered from top level `:http` or `:https` option. It is useful
+      when hosting Phoenix behind a load balancer or reverse proxy and
+      terminating SSL there.
+
+      The `:path` option can be used to override root path. Useful when hosting
+      Phoenix behind a reverse proxy with URL rewrite rules.
+
     * `:static_url` - configuration for generating URLs for static files.
       It will fallback to `url` if no option is provided. Accepts the same
       options as `url`.
@@ -160,6 +168,12 @@ defmodule Phoenix.Endpoint do
       You can configure it to whatever build tool or command you want:
 
           [node: ["node_modules/brunch/bin/brunch", "watch"]]
+
+      The `:cd` option can be used on a watcher to override the folder from 
+      which the watcher will run. By default this will be the project's root:
+      `File.cwd!()`
+
+          [node: ["node_Modules/brunch/bin/brunch", "watch", cd: "my_frontend"]]
 
     * `:live_reload` - configuration for the live reload option.
       Configuration requires a `:patterns` option which should be a list of
@@ -331,6 +345,8 @@ defmodule Phoenix.Endpoint do
   @type topic :: String.t
   @type event :: String.t
   @type msg :: map
+
+  require Logger
 
   # Configuration
 
@@ -670,7 +686,6 @@ defmodule Phoenix.Endpoint do
       Generates a route to a static file in `priv/static`.
       """
       def static_path(path) do
-        Phoenix.Endpoint.validate_local_url(path)
         Phoenix.Config.cache(__MODULE__, :__phoenix_static__,
                              &Phoenix.Endpoint.Supervisor.static_path/1) <>
         Phoenix.Config.cache(__MODULE__, {:__phoenix_static__, path},
@@ -685,8 +700,8 @@ defmodule Phoenix.Endpoint do
       host = force_ssl[:host] || config[:url][:host] || "localhost"
 
       if host == "localhost" do
-        IO.puts :stderr, """
-        warning: you have enabled :force_ssl but your host is currently set to localhost.
+        Logger.warn """
+        you have enabled :force_ssl but your host is currently set to localhost.
         Please configure your endpoint url host properly:
 
             config #{inspect module}, url: [host: "YOURHOST.com"]
@@ -815,22 +830,4 @@ defmodule Phoenix.Endpoint do
     end
   end
   defp tear_alias(other), do: other
-
-  @invalid_local_url_chars ["\\"]
-  @doc false
-  def validate_local_url("//" <> _ = path), do: raise_invalid_url(path)
-  def validate_local_url("/" <> _ = path) do
-    if String.contains?(path, @invalid_local_url_chars) do
-      raise ArgumentError, "unsafe characters detected for path #{inspect path}"
-    else
-      path
-    end
-  end
-  def validate_local_url(path), do: raise_invalid_url(path)
-
-  @spec raise_invalid_url(term()) :: no_return()
-  defp raise_invalid_url(path) do
-    raise ArgumentError, "expected a local path but was #{inspect path}"
-  end
 end
-

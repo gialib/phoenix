@@ -12,9 +12,42 @@ Phoenix ships with a JavaScript client that is available when generating a new P
 
 ## The Moving Parts
 
+### Overview
+
+To start communicating, a client connects to a socket using a transport (eg, Websockets or long polling) and joins one or more channels using that single network connection.
+One channel server process is created per client, per topic.
+The appropriate socket handler initializes a `%Phoenix.Socket` for the channel server (possibly after authenticating the client).
+The channel server then hold onto the `%Phoenix.Socket{}` and can maintain any state it needs within its `socket.assigns`.
+
+Once the connection is established, incoming messages from a client are routed to the correct channel server.
+If it broadcasts a message, that message goes first to the local PubSub, which sends it out to any clients connected to the same server and subscribed to that topic.
+The local PubSub also forwards the message to remote PubSubs on the other nodes in the cluster, which send it out to their own subscribers.
+
+The message flow looks something like this:
+
+                                                                                           ┏━━━━━━━━━━━━━━━━━━━━━━━┓
+                                                                                           ┃Browser Client, Topic 1┃            ┏━━━━━━━━━━━━━━━━━━━┓
+                                                                                        ┏━▶┃    Channel.Server     ┃━Transport━▶┃  Browser Client   ┃
+                                                                                        ┃  ┗━━━━━━━━━━━━━━━━━━━━━━━┛            ┗━━━━━━━━━━━━━━━━━━━┛
+                                                                                        ┃
+                                       ┏━━━━━━━━━━━━━━━━━┓    ┏━━━━━━━━┓    ┏━━━━━━━━┓  ┃  ┏━━━━━━━━━━━━━━━━━━━━━━━┓
+                                       ┃Client 1, Topic 1┃    ┃ Local  ┃    ┃ Remote ┃  ┃  ┃ Phone Client, Topic 1 ┃            ┏━━━━━━━━━━━━━━━━━━━┓
+                           ┏━━━━━━━━━━▶┃ Channel.Server  ┃━━━▶┃ PubSub ┃━┳━▶┃ PubSub ┃━━┻━▶┃    Channel.Server     ┃━Transport━▶┃   Phone Client    ┃
+    ┏━━━━━━━━━━┓           ┃           ┗━━━━━━━━━━━━━━━━━┛    ┗━━━━━━━━┛ ┃  ┗━━━━━━━━┛     ┗━━━━━━━━━━━━━━━━━━━━━━━┛            ┗━━━━━━━━━━━━━━━━━━━┛
+    ┃ Client 1 ┃━Transport━┛  Channel                              ┃     ┃
+    ┗━━━━━━━━━━┛           │   routes  ┌─ ── ── ── ── ── ┐         ┃     ┃
+                                        Client 1, Topic 2│         ┃     ┃
+                           └ ─ ─ ─ ─ ─▶│ Channel.Server            ┃     ┃
+                                       └ ── ── ── ── ── ─┘         ┃     ┃
+                                                                   ┃     ┃
+                                       ┏━━━━━━━━━━━━━━━━━┓         ┃     ┃  ┏━━━━━━━━┓      ┏━━━━━━━━━━━━━━━━━━━━━━┓
+    ┏━━━━━━━━━━┓                       ┃Client 2, Topic 1┃         ┃     ┃  ┃ Remote ┃      ┃ IoT Client, Topic 1  ┃            ┏━━━━━━━━━━━━━━━━━━━┓
+    ┃ Client 2 ┃◀━━━━━Transport━━━━━━━━┃ Channel.Server  ┃◀━━━━━━━━┛     ┗━▶┃ PubSub ┃━━━━━▶┃    Channel.Server    ┃━Transport━▶┃    IoT Client     ┃
+    ┗━━━━━━━━━━┛                       ┗━━━━━━━━━━━━━━━━━┛                  ┗━━━━━━━━┛      ┗━━━━━━━━━━━━━━━━━━━━━━┛            ┗━━━━━━━━━━━━━━━━━━━┛
+
 ### Socket Handlers
 
-Phoenix holds a single connection to the server and multiplexes your channel sockets over that one connection. Socket handlers, such as `lib/hello_web/channels/user_socket.ex`, are modules that authenticate and identify a socket connection and allow you to set default socket assigns for use in all channels.
+Phoenix holds a single connection to each client and multiplexes its channel sockets over that one connection. Socket handlers, such as `lib/hello_web/channels/user_socket.ex`, are modules that authenticate and identify a socket connection and allow you to set default socket assigns for use in all channels.
 
 ### Channel Routes
 
@@ -34,7 +67,7 @@ Each Channel will implement one or more clauses of each of these four callback f
 
 The Phoenix PubSub layer consists of the `Phoenix.PubSub` module and a variety of modules for different adapters and their `GenServer`s. These modules contain functions which are the nuts and bolts of organizing Channel communication - subscribing to topics, unsubscribing from topics, and broadcasting messages on a topic.
 
-It is worth noting that these modules are intended for Phoenix's internal use. Channels use them under the hood to do much of their work. As end users, we shouldn't have any need to use them directly in our applications.		
+It is worth noting that these modules are intended for Phoenix's internal use. Channels use them under the hood to do much of their work. As end users, we shouldn't have any need to use them directly in our applications.
 
 If your deployment environment does not support distributed Elixir or direct communication between servers, Phoenix also ships with a [Redis Adapter](https://hexdocs.pm/phoenix_pubsub_redis/Phoenix.PubSub.Redis.html) that uses Redis to exchange PubSub data. Please see the [Phoenix.PubSub docs](http://hexdocs.pm/phoenix_pubsub/Phoenix.PubSub.html) for more information.
 
@@ -195,7 +228,7 @@ chatInput.addEventListener("keypress", event => {
 })
 
 channel.on("new_msg", payload => {
-  let messageItem = document.createElement("li");
+  let messageItem = document.createElement("li")
   messageItem.innerText = `[${Date()}] ${payload.body}`
   messagesContainer.appendChild(messageItem)
 })
@@ -225,11 +258,6 @@ defmodule HelloWeb.RoomChannel do
 
   def handle_in("new_msg", %{"body" => body}, socket) do
     broadcast! socket, "new_msg", %{body: body}
-    {:noreply, socket}
-  end
-
-  def handle_out("new_msg", payload, socket) do
-    push socket, "new_msg", payload
     {:noreply, socket}
   end
 end
@@ -294,10 +322,11 @@ Now our `conn.assigns` contains the `current_user` and `user_token`.
 
 **Step 2 - Pass the Token to the JavaScript**
 
-Next we need to pass this token to JavaScript. We can do so inside a script tag in `web/templates/layout/app.html.eex`, as follows:
+Next we need to pass this token to JavaScript. We can do so inside a script tag in `web/templates/layout/app.html.eex` right above the app.js script, as follows:
 
 ```html
 <script>window.userToken = "<%= assigns[:user_token] %>";</script>
+<script src="<%= static_path(@conn, "/js/app.js") %>"></script>
 ```
 
 **Step 3 - Pass the Token to the Socket Constructor and Verify**
@@ -370,4 +399,4 @@ Phoenix ships with a way of handling online users that is built on top of Phoeni
 #### Example Application
 To see an example of the application we just built, checkout the project [phoenix_chat_example](https://github.com/chrismccord/phoenix_chat_example).
 
-You can also see a live demo at http://phoenixchat.herokuapp.com/.
+You can also see a live demo at <http://phoenixchat.herokuapp.com/>.

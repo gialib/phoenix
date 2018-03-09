@@ -8,7 +8,7 @@ When preparing an application for deployment, there are three main steps:
   * Compiling your application assets
   * Starting your server in production
 
-How those are exactly handled depends on your deployment infrastructure. We have included a guide specific to [Heroku](heroku.html), and for anyone not using Heroku, we recommend using  [Distillery](https://github.com/bitwalker/distillery).
+How those are exactly handled depends on your deployment infrastructure. We have included a guide specific to [Heroku](heroku.html), and for anyone not using Heroku, we recommend using [Distillery](https://github.com/bitwalker/distillery) ([guide for using Distillery with Phoenix](https://hexdocs.pm/distillery/use-with-phoenix.html)).
 
 In any case, this chapter provides a general overview of the deployment steps, which will be useful regardless of your infrastructure or if you want to run in production locally.
 
@@ -31,7 +31,7 @@ use Mix.Config
 
 # You can generate a new secret by running:
 #
-#     mix phoenix.gen.secret
+#     mix phx.gen.secret
 config :foo, Foo.Endpoint,
   secret_key_base: "A LONG SECRET"
 
@@ -82,14 +82,14 @@ Keep in mind that, if you by any chance forget to run the steps above, Phoenix w
 ```console
 $ PORT=4001 MIX_ENV=prod mix phx.server
 10:50:18.732 [info] Running MyApp.Endpoint with Cowboy on http://example.com
-10:50:18.735 [error] Could not find static manifest at "my_app/_build/prod/lib/foo/priv/static/cache_manifest.json". Run "mix phoenix.digest" after building your static files or remove the configuration from "config/prod.exs".
+10:50:18.735 [error] Could not find static manifest at "my_app/_build/prod/lib/foo/priv/static/cache_manifest.json". Run "mix phx.digest" after building your static files or remove the configuration from "config/prod.exs".
 ```
 
 The error message is quite clear: it says Phoenix could not find a static manifest. Just run the commands above to fix it or, if you are not serving or don't care about assets at all, you can just remove the `cache_static_manifest` configuration from `config/prod.exs`.
 
 ## Starting your server in production
 
-To run Phoenix in production, we need to set the `PORT` and `MIX_ENV` environment variables when invoking `mix phoenix.server`:
+To run Phoenix in production, we need to set the `PORT` and `MIX_ENV` environment variables when invoking `mix phx.server`:
 
 ```console
 $ PORT=4001 MIX_ENV=prod mix phx.server

@@ -1,7 +1,7 @@
 Code.require_file "mix_helper.exs", __DIR__
 
 defmodule Mix.Tasks.Phx.NewTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   import MixHelper
   import ExUnit.CaptureIO
 
@@ -32,6 +32,8 @@ defmodule Mix.Tasks.Phx.NewTest do
 
       assert_file "phx_blog/config/config.exs", fn file ->
         assert file =~ "ecto_repos: [PhxBlog.Repo]"
+        assert file =~ "config :phoenix, :json_library, Jason"
+        assert file =~ "config :ecto, :json_library, Jason"
         refute file =~ "namespace: PhxBlog"
         refute file =~ "config :phx_blog, :generators"
       end
@@ -43,7 +45,10 @@ defmodule Mix.Tasks.Phx.NewTest do
 
       assert_file "phx_blog/lib/phx_blog/application.ex", ~r/defmodule PhxBlog.Application do/
       assert_file "phx_blog/lib/phx_blog.ex", ~r/defmodule PhxBlog do/
-      assert_file "phx_blog/mix.exs", ~r/mod: {PhxBlog.Application, \[\]}/
+      assert_file "phx_blog/mix.exs", fn file ->
+        assert file =~ "mod: {PhxBlog.Application, []}"
+        assert file =~ "{:jason, \"~> 1.0\"}"
+      end
       assert_file "phx_blog/lib/phx_blog_web.ex", fn file ->
         assert file =~ "defmodule PhxBlogWeb do"
         assert file =~ "use Phoenix.View, root: \"lib/phx_blog_web/templates\""
@@ -68,10 +73,12 @@ defmodule Mix.Tasks.Phx.NewTest do
       assert_file "phx_blog/lib/phx_blog_web/templates/layout/app.html.eex",
                   "<title>Hello PhxBlog!</title>"
 
-      # Brunch
-      assert_file "phx_blog/.gitignore", "/node_modules"
+      # webpack
+      assert_file "phx_blog/.gitignore", "/assets/node_modules/"
+      assert_file "phx_blog/.gitignore", "phx_blog-*.tar"
       assert_file "phx_blog/.gitignore", ~r/\n$/
-      assert_file "phx_blog/assets/brunch-config.js", ~s("js/app.js": ["js/app"])
+      assert_file "phx_blog/assets/webpack.config.js", "js/app.js"
+      assert_file "phx_blog/assets/.babelrc", "env"
       assert_file "phx_blog/config/dev.exs", fn file ->
         assert file =~ "watchers: [node:"
         assert file =~ "lib/phx_blog_web/views/.*(ex)"
@@ -138,14 +145,14 @@ defmodule Mix.Tasks.Phx.NewTest do
 
   test "new without defaults" do
     in_tmp "new without defaults", fn ->
-      Mix.Tasks.Phx.New.run([@app_name, "--no-html", "--no-brunch", "--no-ecto"])
+      Mix.Tasks.Phx.New.run([@app_name, "--no-html", "--no-webpack", "--no-ecto"])
 
-      # No Brunch
-      refute File.read!("phx_blog/.gitignore") |> String.contains?("/node_modules")
+      # No webpack
+      refute File.read!("phx_blog/.gitignore") |> String.contains?("/assets/node_modules/")
       assert_file "phx_blog/.gitignore", ~r/\n$/
       assert_file "phx_blog/config/dev.exs", ~r/watchers: \[\]/
 
-      # No Brunch & No Html
+      # No webpack & No HTML
       refute_file "phx_blog/priv/static/css/app.css"
       refute_file "phx_blog/priv/static/favicon.ico"
       refute_file "phx_blog/priv/static/images/phoenix.png"
@@ -161,9 +168,13 @@ defmodule Mix.Tasks.Phx.NewTest do
       assert_file "phx_blog/config/config.exs", fn file ->
         refute file =~ "config :phx_blog, :generators"
         refute file =~ "ecto_repos:"
+        refute file =~ "config :ecto, :json_library, Jason"
       end
 
-      assert_file "phx_blog/config/dev.exs", &refute(&1 =~ config)
+      assert_file "phx_blog/config/dev.exs", fn file ->
+        refute file =~ config
+        assert file =~ "config :phoenix, :plug_init_mode, :runtime"
+      end
       assert_file "phx_blog/config/test.exs", &refute(&1 =~ config)
       assert_file "phx_blog/config/prod.secret.exs", &refute(&1 =~ config)
       assert_file "phx_blog/lib/phx_blog_web.ex", &refute(&1 =~ ~r"alias PhxBlog.Repo")
@@ -194,9 +205,9 @@ defmodule Mix.Tasks.Phx.NewTest do
     end
   end
 
-  test "new with no_brunch" do
-    in_tmp "new with no_brunch", fn ->
-      Mix.Tasks.Phx.New.run([@app_name, "--no-brunch"])
+  test "new with no_webpack" do
+    in_tmp "new with no_webpack", fn ->
+      Mix.Tasks.Phx.New.run([@app_name, "--no-webpack"])
 
       assert_file "phx_blog/.gitignore"
       assert_file "phx_blog/.gitignore", ~r/\n$/

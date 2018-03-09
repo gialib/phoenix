@@ -107,7 +107,7 @@ defmodule Phoenix.Test.ConnTest do
       build_conn()
       |> put_req_header("content-type", "application/json")
       |> post(:hello, "[1, 2, 3]")
-      |> Plug.Parsers.call(Plug.Parsers.init(parsers: [:json], json_decoder: Poison))
+      |> Plug.Parsers.call(Plug.Parsers.init(parsers: [:json], json_decoder: Phoenix.json_library()))
 
     assert conn.method == "POST"
     assert conn.path_info == []
@@ -143,23 +143,44 @@ defmodule Phoenix.Test.ConnTest do
     refute conn.private.phoenix_recycled
   end
 
-  test "recycle/1" do
-    conn =
-      build_conn()
-      |> get("/")
-      |> put_req_header("hello", "world")
-      |> put_req_cookie("req_cookie", "req_cookie")
-      |> put_req_cookie("del_cookie", "del_cookie")
-      |> put_req_cookie("over_cookie", "pre_cookie")
-      |> put_resp_cookie("over_cookie", "pos_cookie")
-      |> put_resp_cookie("resp_cookie", "resp_cookie")
-      |> delete_resp_cookie("del_cookie")
+  describe "recycle/1" do
+    test "relevant request headers are persisted" do
+      conn =
+        build_conn()
+        |> get("/")
+        |> put_req_header("accept", "text/html")
+        |> put_req_header("authorization", "Bearer mytoken")
+        |> put_req_header("hello", "world")
 
-    conn = conn |> recycle() |> fetch_cookies()
-    assert get_req_header(conn, "hello") == []
-    assert conn.cookies == %{"req_cookie"  => "req_cookie",
-                             "over_cookie" => "pos_cookie",
-                             "resp_cookie" => "resp_cookie"}
+      conn = conn |> recycle()
+      assert get_req_header(conn, "accept") == ["text/html"]
+      assert get_req_header(conn, "authorization") == ["Bearer mytoken"]
+      assert get_req_header(conn, "hello") == []
+    end
+
+    test "host is persisted" do
+      conn =
+        build_conn(:get, "http://localhost/", nil)
+        |> recycle()
+      assert conn.host == "localhost"
+    end
+
+    test "cookies are persisted" do
+      conn =
+        build_conn()
+        |> get("/")
+        |> put_req_cookie("req_cookie", "req_cookie")
+        |> put_req_cookie("del_cookie", "del_cookie")
+        |> put_req_cookie("over_cookie", "pre_cookie")
+        |> put_resp_cookie("over_cookie", "pos_cookie")
+        |> put_resp_cookie("resp_cookie", "resp_cookie")
+        |> delete_resp_cookie("del_cookie")
+
+      conn = conn |> recycle() |> fetch_cookies()
+      assert conn.cookies == %{"req_cookie"  => "req_cookie",
+                               "over_cookie" => "pos_cookie",
+                               "resp_cookie" => "resp_cookie"}
+    end
   end
 
   test "ensure_recycled/1" do
@@ -249,13 +270,13 @@ defmodule Phoenix.Test.ConnTest do
       build_conn(:get, "/") |> resp(200, "ok") |> json_response(200)
     end
 
-    assert_raise RuntimeError,
-                 "could not decode JSON body, invalid token \"o\" in body:\n\nok", fn ->
+    assert_raise Jason.DecodeError,
+                 "unexpected byte at position 0: 0x6F ('o')", fn ->
       build_conn(:get, "/") |> put_resp_content_type("application/json")
                       |> resp(200, "ok") |> json_response(200)
     end
 
-    assert_raise RuntimeError, "could not decode JSON body, body is empty", fn ->
+    assert_raise Jason.DecodeError, ~r/unexpected end of input at position 0/, fn ->
       build_conn(:get, "/")
       |> put_resp_content_type("application/json")
       |> resp(200, "")

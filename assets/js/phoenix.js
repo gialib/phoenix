@@ -109,21 +109,29 @@
  * The `Presence` object provides features for syncing presence information
  * from the server with the client and handling presences joining and leaving.
  *
- * ### Syncing initial state from the server
+ * ### Syncing state from the server
  *
- * `Presence.syncState` is used to sync the list of presences on the server
- * with the client's state. An optional `onJoin` and `onLeave` callback can
- * be provided to react to changes in the client's local presences across
- * disconnects and reconnects with the server.
+ * To sync presence state from the server, first instantiate an object and
+ * pass your channel in to track lifecycle events:
  *
- * `Presence.syncDiff` is used to sync a diff of presence join and leave
- * events from the server, as they happen. Like `syncState`, `syncDiff`
- * accepts optional `onJoin` and `onLeave` callbacks to react to a user
- * joining or leaving from a device.
+ * ```javascript
+ * let channel = new socket.channel("some:topic")
+ * let presence = new Presence(channel)
+ * ```
+ *
+ * Next, use the `presence.onSync` callback to react to state changes
+ * from the server. For example, to render the list of users every time
+ * the list changes, you could write:
+ *
+ * ```javascript
+ * presence.onSync(() => {
+ *   myRenderUsersFunction(presence.list())
+ * })
+ * ```
  *
  * ### Listing Presences
  *
- * `Presence.list` is used to return a list of presence information
+ * `presence.list` is used to return a list of presence information
  * based on the local state of metadata. By default, all presence
  * metadata is returned, but a `listBy` function can be supplied to
  * allow the client to select which metadata to use for a given presence.
@@ -136,45 +144,42 @@
  * they came online from:
  *
  * ```javascript
- * let state = {}
- * state = Presence.syncState(state, stateFromServer)
  * let listBy = (id, {metas: [first, ...rest]}) => {
  *   first.count = rest.length + 1 // count of this user's presences
  *   first.id = id
  *   return first
  * }
- * let onlineUsers = Presence.list(state, listBy)
+ * let onlineUsers = presence.list(listBy)
  * ```
  *
+ * ### Handling individual presence join and leave events
  *
- * ### Example Usage
+ * The `presence.onJoin` and `presence.onLeave` callbacks can be used to
+ * react to individual presences joining and leaving the app. For example:
+ *
  * ```javascript
+ * let presence = new Presence(channel)
+ *
  * // detect if user has joined for the 1st time or from another tab/device
- * let onJoin = (id, current, newPres) => {
+ * presence.onJoin((id, current, newPres) => {
  *   if(!current){
  *     console.log("user has entered for the first time", newPres)
  *   } else {
  *     console.log("user additional presence", newPres)
  *   }
- * }
+ * })
+ *
  * // detect if user has left from all tabs/devices, or is still present
- * let onLeave = (id, current, leftPres) => {
+ * presence.onLeave((id, current, leftPres) => {
  *   if(current.metas.length === 0){
  *     console.log("user has left from all devices", leftPres)
  *   } else {
  *     console.log("user left from a device", leftPres)
  *   }
- * }
- * let presences = {} // client's initial empty presence state
- * // receive initial presence data from server, sent after join
- * myChannel.on("presence_state", state => {
- *   presences = Presence.syncState(presences, state, onJoin, onLeave)
- *   displayUsers(Presence.list(presences))
  * })
- * // receive "presence_diff" from server, containing join/leave events
- * myChannel.on("presence_diff", diff => {
- *   presences = Presence.syncDiff(presences, diff, onJoin, onLeave)
- *   this.setState({users: Presence.list(room.presences, listBy)})
+ * // receive presence data from server
+ * presence.onSync(() => {
+ *   displayUsers(presence.list())
  * })
  * ```
  * @module phoenix
@@ -219,7 +224,6 @@ const TRANSPORTS = {
  * @param {number} timeout - The push timeout in milliseconds
  */
 class Push {
-
   constructor(channel, event, payload, timeout){
     this.channel      = channel
     this.event        = event
@@ -268,6 +272,16 @@ class Push {
 
     this.recHooks.push({status, callback})
     return this
+  }
+
+  /**
+   * Updates the Push payload for subsequent resends
+   *
+   * @param {Object} payload
+   * @returns {Push}
+   */
+  updatePayload(payload) {
+    this.payload = payload;
   }
 
   /**
@@ -416,6 +430,17 @@ export class Channel {
   }
 
   /**
+   * Updates the params passed as the second argument to `new Channel("topic", params, socket)`
+   * Any subsequent reconnects on the channel will send the updated params to the `join` callback on the sever
+   *
+   * @param {Object} params
+   */
+  updateJoinParams(params = {}) {
+    this.params = params;
+    this.joinPush.updatePayload(params);
+  }
+
+  /**
    * Hook into channel close
    * @param {Function} callback
    */
@@ -446,6 +471,7 @@ export class Channel {
    *
    * @param {string} event
    * @param {Function} callback
+   * @returns {integer} ref
    */
   on(event, callback){
     let ref = this.bindingRef++
@@ -455,7 +481,7 @@ export class Channel {
 
   /**
    * @param {string} event
-   * @param {Function} callback
+   * @param {integer} ref
    */
   off(event, ref){
     this.bindings = this.bindings.filter((bind) => {
@@ -471,6 +497,7 @@ export class Channel {
   /**
    * @param {string} event
    * @param {Object} payload
+   * @param {number} [timeout]
    * @returns {Push}
    */
   push(event, payload, timeout = this.timeout){
@@ -529,6 +556,7 @@ export class Channel {
    * @param {string} event
    * @param {Object} payload
    * @param {integer} ref
+   * @returns {Object}
    */
   onMessage(event, payload, ref){ return payload }
 
@@ -633,11 +661,11 @@ const Serializer = {
  * @param {string} endPoint - The string WebSocket endpoint, ie, `"ws://example.com/socket"`,
  *                                               `"wss://example.com"`
  *                                               `"/socket"` (inherited host & protocol)
- * @param {Object} opts - Optional configuration
- * @param {string} opts.transport - The Websocket Transport, for example WebSocket or Phoenix.LongPoll.
+ * @param {Object} [opts] - Optional configuration
+ * @param {string} [opts.transport] - The Websocket Transport, for example WebSocket or Phoenix.LongPoll.
  *
  * Defaults to WebSocket with automatic LongPoll fallback.
- * @param {Function} opts.encode - The function to encode outgoing messages.
+ * @param {Function} [opts.encode] - The function to encode outgoing messages.
  *
  * Defaults to JSON:
  *
@@ -645,7 +673,7 @@ const Serializer = {
  * (payload, callback) => callback(JSON.stringify(payload))
  * ```
  *
- * @param {Function} opts.decode - The function to decode incoming messages.
+ * @param {Function} [opts.decode] - The function to decode incoming messages.
  *
  * Defaults to JSON:
  *
@@ -653,11 +681,11 @@ const Serializer = {
  * (payload, callback) => callback(JSON.parse(payload))
  * ```
  *
- * @param {number} opts.timeout - The default timeout in milliseconds to trigger push timeouts.
+ * @param {number} [opts.timeout] - The default timeout in milliseconds to trigger push timeouts.
  *
  * Defaults `DEFAULT_TIMEOUT`
- * @param {number} opts.heartbeatIntervalMs - The millisec interval to send a heartbeat message
- * @param {number} opts.reconnectAfterMs - The optional function that returns the millsec reconnect interval.
+ * @param {number} [opts.heartbeatIntervalMs] - The millisec interval to send a heartbeat message
+ * @param {number} [opts.reconnectAfterMs] - The optional function that returns the millsec reconnect interval.
  *
  * Defaults to stepped backoff of:
  *
@@ -666,23 +694,22 @@ const Serializer = {
  *   return [1000, 5000, 10000][tries - 1] || 10000
  * }
  * ```
- * @param {Function} opts.logger - The optional function for specialized logging, ie:
+ * @param {Function} [opts.logger] - The optional function for specialized logging, ie:
  * ```javascript
  * function(kind, msg, data) {
  *   console.log(`${kind}: ${msg}`, data)
  * }
  * ```
  *
- * @param {number}  opts.longpollerTimeout - The maximum timeout of a long poll AJAX request.
+ * @param {number} [opts.longpollerTimeout] - The maximum timeout of a long poll AJAX request.
  *
  * Defaults to 20s (double the server long poll timer).
  *
- * @param {Object}  opts.params - The optional params to pass when connecting
+ * @param {Object} [opts.params] - The optional params to pass when connecting
  *
  *
 */
 export class Socket {
-
   constructor(endPoint, opts = {}){
     this.stateChangeCallbacks = {open: [], close: [], error: [], message: []}
     this.channels             = []
@@ -1112,11 +1139,74 @@ export class Ajax {
 
 Ajax.states = {complete: 4}
 
+/**
+ * Initializes the Presence
+ * @param {Channel} channel - The Channel
+ * @param {Object} opts - The options,
+ *        for example `{events: {state: "state", diff: "diff"}}`
+ */
+export class Presence {
 
+  constructor(channel, opts = {}){
+    let events = opts.events || {state: "presence_state", diff: "presence_diff"}
+    this.state = {}
+    this.pendingDiffs = []
+    this.channel = channel
+    this.joinRef = null
+    this.caller = {
+      onJoin: function(){},
+      onLeave: function(){},
+      onSync: function(){}
+    }
 
-export var Presence = {
+    this.channel.on(events.state, newState => {
+      let {onJoin, onLeave, onSync} = this.caller
 
-  syncState(currentState, newState, onJoin, onLeave){
+      this.joinRef = this.channel.joinRef()
+      this.state = Presence.syncState(this.state, newState, onJoin, onLeave)
+
+      this.pendingDiffs.forEach(diff => {
+        this.state = Presence.syncDiff(this.state, diff, onJoin, onLeave)
+      })
+      this.pendingDiffs = []
+      onSync()
+    })
+
+    this.channel.on(events.diff, diff => {
+      let {onJoin, onLeave, onSync} = this.caller
+
+      if(this.inPendingSyncState()){
+        this.pendingDiffs.push(diff)
+      } else {
+        this.state = Presence.syncDiff(this.state, diff, onJoin, onLeave)
+        onSync()
+      }
+    })
+  }
+
+  onJoin(callback){ this.caller.onJoin = callback }
+
+  onLeave(callback){ this.caller.onLeave = callback }
+
+  onSync(callback){ this.caller.onSync = callback }
+
+  list(by){ return Presence.list(this.state, by) }
+
+  inPendingSyncState(){
+    return !this.joinRef || (this.joinRef !== this.channel.joinRef())
+  }
+
+  // lower-level public static API
+
+  /**
+   * Used to sync the list of presences on the server
+   * with the client's state. An optional `onJoin` and `onLeave` callback can
+   * be provided to react to changes in the client's local presences across
+   * disconnects and reconnects with the server.
+   *
+   * @returns {Presence}
+   */
+  static syncState(currentState, newState, onJoin, onLeave){
     let state = this.clone(currentState)
     let joins = {}
     let leaves = {}
@@ -1146,9 +1236,18 @@ export var Presence = {
       }
     })
     return this.syncDiff(state, {joins: joins, leaves: leaves}, onJoin, onLeave)
-  },
+  }
 
-  syncDiff(currentState, {joins, leaves}, onJoin, onLeave){
+  /**
+   *
+   * Used to sync a diff of presence join and leave
+   * events from the server, as they happen. Like `syncState`, `syncDiff`
+   * accepts optional `onJoin` and `onLeave` callbacks to react to a user
+   * joining or leaving from a device.
+   *
+   * @returns {Presence}
+   */
+  static syncDiff(currentState, {joins, leaves}, onJoin, onLeave){
     let state = this.clone(currentState)
     if(!onJoin){ onJoin = function(){} }
     if(!onLeave){ onLeave = function(){} }
@@ -1176,23 +1275,31 @@ export var Presence = {
       }
     })
     return state
-  },
+  }
 
-  list(presences, chooser){
+  /**
+   * Returns the array of presences, with selected metadata.
+   *
+   * @param {Object} presences
+   * @param {Function} chooser
+   *
+   * @returns {Presence}
+   */
+  static list(presences, chooser){
     if(!chooser){ chooser = function(key, pres){ return pres } }
 
     return this.map(presences, (key, presence) => {
       return chooser(key, presence)
     })
-  },
+  }
 
   // private
 
-  map(obj, func){
+  static map(obj, func){
     return Object.getOwnPropertyNames(obj).map(key => func(key, obj[key]))
-  },
+  }
 
-  clone(obj){ return JSON.parse(JSON.stringify(obj)) }
+  static clone(obj){ return JSON.parse(JSON.stringify(obj)) }
 }
 
 

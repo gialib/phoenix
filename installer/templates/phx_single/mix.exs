@@ -4,12 +4,12 @@ defmodule <%= app_module %>.Mixfile do
   def project do
     [
       app: :<%= app_name %>,
-      version: "0.0.1",<%= if in_umbrella do %>
+      version: "0.1.0",<%= if in_umbrella do %>
       build_path: "../../_build",
       config_path: "../../config/config.exs",
       deps_path: "../../deps",
       lockfile: "../../mix.lock",<% end %>
-      elixir: "~> 1.4",
+      elixir: "~> 1.5",
       elixirc_paths: elixirc_paths(Mix.env),
       compilers: [:phoenix, :gettext] ++ Mix.compilers,
       start_permanent: Mix.env == :prod,<%= if ecto do %>
@@ -44,6 +44,7 @@ defmodule <%= app_module %>.Mixfile do
       {:phoenix_html, "~> 2.10"},
       {:phoenix_live_reload, "~> 1.0", only: :dev},<% end %>
       {:gettext, "~> 0.11"},
+      {:jason, "~> 1.0"},
       {:cowboy, "~> 1.0"}
     ]
   end<%= if ecto do %>

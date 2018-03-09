@@ -134,7 +134,7 @@ defmodule Phoenix.ConnTest do
   This is useful when a specific connection is required
   for testing a plug or a particular function.
   """
-  @spec build_conn(atom | binary, binary, binary | list | map) :: Conn.t
+  @spec build_conn(atom | binary, binary, binary | list | map | nil) :: Conn.t
   def build_conn(method, path, params_or_body \\ nil) do
     Plug.Adapters.Test.Conn.conn(%Conn{}, method, path, params_or_body)
     |> Conn.put_private(:plug_skip_csrf_protection, true)
@@ -144,7 +144,7 @@ defmodule Phoenix.ConnTest do
   @doc """
   Deprecated version of conn/3. Use build_conn/3 instead
   """
-  @spec conn(atom | binary, binary, binary | list | map) :: Conn.t
+  @spec conn(atom | binary, binary, binary | list | map | nil) :: Conn.t
   def conn(method, path, params_or_body \\ nil) do
     IO.write :stderr, """
     warning: using conn/3 to build a connection is deprecated. Use build_conn/3 instead.
@@ -407,14 +407,8 @@ defmodule Phoenix.ConnTest do
   def json_response(conn, status) do
     body = response(conn, status)
     _    = response_content_type(conn, :json)
-    case Poison.decode(body) do
-      {:ok, body} ->
-        body
-      {:error, {:invalid, token, _}} ->
-        raise "could not decode JSON body, invalid token #{inspect token} in body:\n\n#{body}"
-      {:error, :invalid, _} ->
-        raise "could not decode JSON body, body is empty"
-    end
+
+    Phoenix.json_library().decode!(body)
   end
 
   @doc """
@@ -465,8 +459,9 @@ defmodule Phoenix.ConnTest do
   @spec recycle(Conn.t) :: Conn.t
   def recycle(conn) do
     build_conn()
+    |> Map.put(:host, conn.host)
     |> Plug.Test.recycle_cookies(conn)
-    |> copy_headers(conn.req_headers, ~w(accept))
+    |> copy_headers(conn.req_headers, ~w(accept authorization))
   end
 
   defp copy_headers(conn, headers, copy) do
@@ -493,6 +488,13 @@ defmodule Phoenix.ConnTest do
 
   Useful for unit testing Plugs where Endpoint and/or
   router pipeline plugs are required for proper setup.
+
+  Note the use of `get("/")` following `bypass_through` in the examples below.
+  To execute the plug pipelines, you must issue a request against the router.
+  Most often, you can simpy send a GET request against the root path, but you
+  may also specify a different method or path which your pipelines may operate
+  against. If you ommit the request you may find that your tests return
+  a `flash not fetched, call fetch_flash/2` or simular error.
 
   ## Examples
 

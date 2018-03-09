@@ -23,7 +23,7 @@ At the top of this guide, we mentioned that views are a place to put functions f
 Let's open up our application layout template, `lib/hello_web/templates/layout/app.html.eex`, and change this line,
 
 ```html
-<title>Hello Phoenix!</title>
+<title>Hello Hello!</title>
 ```
 
 to call a `title/0` function, like this.
@@ -268,11 +268,11 @@ Great, so we have a `render/2` function that takes a template and an `assigns` m
 </html>
 ```
 
-Now we can use the `render/2` function we saw above when we were experimenting with rendering in the `iex` session. Since we know that Phoenix will precompile the `404.html.eex` template as a `render("index.html.eex", assigns)` function clause, we can delete the clause from our ErrorView.
+Now we can use the `render/2` function we saw above when we were experimenting with rendering in the `iex` session. Since we know that Phoenix will precompile the `404.html.eex` template as a `render("404.html", assigns)` function clause, we can delete the clause from our ErrorView.
 
 ```diff
 - def render("404.html", _assigns) do
--  render("not_found.html", %{})
+-   "Page not found"
 - end
 ```
 
@@ -280,7 +280,7 @@ When we go back to [http://localhost:4000/such/a/wrong/path](http://localhost:40
 
 ## Rendering JSON
 
-The view's job is not only to render HTML templates. Views are about data presentation. Given a bag of data, the view's purpose is to present that in a meaningful way given some format, be it HTML, JSON, CSV, or others. Many web apps today return JSON to remote clients, and Phoenix views are *great* for JSON rendering. Phoenix uses [Poison](https://github.com/devinus/poison) to encode Maps to JSON, so all we need to do in our views is format the data we'd like to respond with as a Map, and Phoenix will do the rest. It is possible to respond with JSON back directly from the controller and skip the View. However, if we think about a controller as having the responsibilities of receiving a request and fetching data to be sent back, data manipulation and formatting don't fall under those responsibilities. A view gives us a module responsible for formatting and manipulating the data. Let's take our `PageController`, and see what it might look like when we respond with some static page maps as JSON, instead of HTML.
+The view's job is not only to render HTML templates. Views are about data presentation. Given a bag of data, the view's purpose is to present that in a meaningful way given some format, be it HTML, JSON, CSV, or others. Many web apps today return JSON to remote clients, and Phoenix views are *great* for JSON rendering. Phoenix uses [Jason](https://github.com/michalmuskala/jason) to encode Maps to JSON, so all we need to do in our views is format the data we'd like to respond with as a Map, and Phoenix will do the rest. It is possible to respond with JSON back directly from the controller and skip the View. However, if we think about a controller as having the responsibilities of receiving a request and fetching data to be sent back, data manipulation and formatting don't fall under those responsibilities. A view gives us a module responsible for formatting and manipulating the data. Let's take our `PageController`, and see what it might look like when we respond with some static page maps as JSON, instead of HTML.
 
 ```elixir
 defmodule HelloWeb.PageController do
@@ -320,7 +320,7 @@ defmodule HelloWeb.PageView do
 end
 ```
 
-In the view we see our `render/2` function pattern matching on `"index.json"`, `"show.json"`, and `"page.json"`. In our controller `show/2` function, `render conn, "show.json", page: page` will pattern match on the matching name and extension in the view `render/3` functions. In other words, `render conn, "index.json", pages: pages` will call `render("index.json", %{pages: pages})` The `render_many/3` function takes the data we want to respond with (`pages`), a `View`, and a string to pattern match on the `render/3` function defined on `View`. It will map over each item in `pages`, and pass the item to the `render/3` function in `View` matching the file string. `render_one/3` follows, the same signature, ultimately using the `render/3` matching `page.json` to specify what each `page` looks like. The `render/3` matching `"index.json"` will respond with JSON as you would expect:
+In the view we see our `render/2` function pattern matching on `"index.json"`, `"show.json"`, and `"page.json"`. In our controller `show/2` function, `render conn, "show.json", page: page` will pattern match on the matching name and extension in the view's `render/2` functions. In other words, `render conn, "index.json", pages: pages` will call `render("index.json", %{pages: pages})`. The `render_many/3` function takes the data we want to respond with (`pages`), a `View`, and a string to pattern match on the `render/2` function defined on `View`. It will map over each item in `pages`, and pass the item to the `render/2` function in `View` matching the file string. `render_one/3` follows, the same signature, ultimately using the `render/2` matching `page.json` to specify what each `page` looks like. The `render/2` matching `"index.json"` will respond with JSON as you would expect:
 
 ```javascript
   {
@@ -335,7 +335,7 @@ In the view we see our `render/2` function pattern matching on `"index.json"`, `
   }
 ```
 
-And the `render/3` matching `"show.json"`:
+And the `render/2` matching `"show.json"`:
 
 ```javascript
   {
@@ -345,7 +345,7 @@ And the `render/3` matching `"show.json"`:
   }
 ```
 
-It's useful to build our views like this so they can be composable. Imagine a situation where our `Page` has a `has_many` relationship with `Author`, and depending on the request, we may want to send back `author` data with the `page`. We can easily accomplish this with a new `render/3`:
+It's useful to build our views like this so they can be composable. Imagine a situation where our `Page` has a `has_many` relationship with `Author`, and depending on the request, we may want to send back `author` data with the `page`. We can easily accomplish this with a new `render/2`:
 
 
 ```elixir

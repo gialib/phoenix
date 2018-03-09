@@ -1,14 +1,43 @@
 # Changelog
 
-## 1.3.1-dev
+## 1.4.0-dev
 
 * Enhancements
+  * [Endpoint] Add `Cowboy2Handler` for HTTP2 support with cowboy2.
+  * [Phoenix] Add `Phoenix.json_library/0` and replace `Poison` with `Jason` for JSON encoding in new projects.
   * [Controller] Support partial file downloads with `:offset` and `:length` options to `send_download/3`
+  * [Controller] Add additional security headers to `put_secure_browser_headers` (`x-content-type-options`, `x-download-options`, and `x-permitted-cross-domain-policies`)
+  * [Controller] Add `put_router_url/2` to override the default URL generation pulled from endpoint configuration
   * [Logger] Add whitelist support to `filter_parameters` logger configuration, via new `:keep` tuple format
   * [Router] Raise on duplicate plugs in pipe_through scopes
+  * [ChannelTest] Respect user's configured ExUnit `:assert_receive_timeout` for macro assertions
+  * [phx.new] Generate new Elixir 1.5+ child spec
+  * [phx.new] Use webpack for asset bundling
+
+* Bug Fixes
+  * [Channel] Fix issue with WebSocket transport sending wrong ContentLength header with 403 response
+
+* JavaScript client enhancements
+  * Add new instance-based Presence API with simplified synchronization callbacks
+  * Add `updateJoinParams` to channel for explicit param updates between rejoins
+
+* JavaScript client bug fixes
+  * Fix race condition when presence diff arrives before state
 
 * Deprecations
   * [Controller] Passing a view in `render/3` and `render/4` is deprecated in favor of `put_view/2`
+
+## 1.3.1 (2018-03-02)
+
+* Enhancements
+  * [Router] Raise on unknown `:only` and `:except` in `resources`.
+  * [Router] Include line numbers in generated routes for better reporting
+  * [Logger] Add parameter keep strategy to filter all parameters by default and selectively keep parameters
+  * [Token] Support `:infinity` for token max age
+  * [Presence] Generate `child_spec` for Elixir 1.5+ support
+
+* Bug Fixes
+  * [Transports.WebSocketSerializer] Do not encode `:join_ref` in v1 messages
 
 ## 1.3.0 (2017-07-28)
 

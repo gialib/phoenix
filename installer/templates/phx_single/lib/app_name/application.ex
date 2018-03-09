@@ -1,19 +1,19 @@
 defmodule <%= app_module %>.Application do
-  use Application
-
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
-  def start(_type, _args) do
-    import Supervisor.Spec
+  @moduledoc false
 
-    # Define workers and child supervisors to be supervised
+  use Application
+
+  def start(_type, _args) do
+    # List all child processes to be supervised
     children = [<%= if ecto do %>
       # Start the Ecto repository
-      supervisor(<%= app_module %>.Repo, []),<% end %>
+      <%= app_module %>.Repo,<% end %>
       # Start the endpoint when the application starts
-      supervisor(<%= endpoint_module %>, []),
-      # Start your own worker by calling: <%= app_module %>.Worker.start_link(arg1, arg2, arg3)
-      # worker(<%= app_module %>.Worker, [arg1, arg2, arg3]),
+      <%= endpoint_module %>,
+      # Starts a worker by calling: <%= app_module %>.Worker.start_link(arg)
+      # {<%= app_module %>.Worker, arg},
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

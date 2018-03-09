@@ -41,6 +41,11 @@ defmodule Phoenix.Controller.ControllerTest do
     assert view_template(%Conn{}) == nil
   end
 
+  test "status_message_from_template/1" do
+    assert status_message_from_template("404.html") == "Not Found"
+    assert status_message_from_template("whatever.html") == "Internal Server Error"
+  end
+
   test "put_layout_formats/2 and layout_formats/1" do
     conn = conn(:get, "/")
     assert layout_formats(conn) == ~w(html)
@@ -520,11 +525,15 @@ defmodule Phoenix.Controller.ControllerTest do
     assert get_resp_header(conn, "x-frame-options") == ["SAMEORIGIN"]
     assert get_resp_header(conn, "x-xss-protection") == ["1; mode=block"]
     assert get_resp_header(conn, "x-content-type-options") == ["nosniff"]
+    assert get_resp_header(conn, "x-download-options") == ["noopen"]
+    assert get_resp_header(conn, "x-permitted-cross-domain-policies") == ["none"]
 
     custom_headers = %{"x-frame-options" => "custom", "foo" => "bar"}
     conn = conn(:get, "/") |> put_secure_browser_headers(custom_headers)
     assert get_resp_header(conn, "x-frame-options") == ["custom"]
     assert get_resp_header(conn, "x-xss-protection") == ["1; mode=block"]
+    assert get_resp_header(conn, "x-download-options") == ["noopen"]
+    assert get_resp_header(conn, "x-permitted-cross-domain-policies") == ["none"]
     assert get_resp_header(conn, "foo") == ["bar"]
   end
 
@@ -555,6 +564,7 @@ defmodule Phoenix.Controller.ControllerTest do
       conn(:get, path)
       |> fetch_query_params()
       |> put_private(:phoenix_endpoint, __MODULE__)
+      |> put_private(:phoenix_router, __MODULE__)
     end
 
     test "current_path/1 uses the conn's query params" do

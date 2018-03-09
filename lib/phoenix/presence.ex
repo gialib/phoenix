@@ -28,7 +28,7 @@ defmodule Phoenix.Presence do
 
       children = [
         ...
-        supervisor(MyApp.Presence, []),
+        MyApp.Presence,
       ]
 
   Once added, presences can be tracked in your channel after joining:
@@ -108,7 +108,7 @@ defmodule Phoenix.Presence do
   @type topic :: String.t
 
   @callback start_link(Keyword.t) :: {:ok, pid()} | {:error, reason :: term()} :: :ignore
-  @callback init(Keyword.t) :: {:ok, pid()} | {:error, reason :: term}
+  @callback init(Keyword.t) :: {:ok, state :: term} | {:error, reason :: term}
   @callback track(Phoenix.Socket.t, key :: String.t, meta :: map()) :: {:ok, binary()} | {:error, reason :: term()}
   @callback track(pid, topic, key :: String.t, meta :: map()) :: {:ok, binary()} | {:error, reason :: term()}
   @callback untrack(Phoenix.Socket.t, key :: String.t) :: :ok
@@ -125,6 +125,15 @@ defmodule Phoenix.Presence do
       @otp_app @opts[:otp_app] || raise "presence expects :otp_app to be given"
       @behaviour unquote(__MODULE__)
       @task_supervisor Module.concat(__MODULE__, TaskSupervisor)
+
+      @doc false
+      def child_spec(opts) do
+        %{
+          id: __MODULE__,
+          start: {__MODULE__, :start_link, [opts]},
+          type: :supervisor
+        }
+      end
 
       def start_link(opts \\ []) do
         opts = Keyword.merge(@opts, opts)
@@ -173,7 +182,7 @@ defmodule Phoenix.Presence do
         {:ok, state}
       end
 
-      defoverridable fetch: 2
+      defoverridable fetch: 2, child_spec: 1
     end
   end
 

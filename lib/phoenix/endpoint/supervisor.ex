@@ -21,10 +21,6 @@ defmodule Phoenix.Endpoint.Supervisor do
   end
 
   @doc false
-  # TODO: Ideally every process would be named based on a `name` option
-  # instead of using the module. However, __phoenix_pubsub__ is highly
-  # dependent on the module name, so we should consider enabling this
-  # once we move to Firenest.
   def init({otp_app, mod}) do
     id = :crypto.strong_rand_bytes(16) |> Base.encode64
 
@@ -65,8 +61,8 @@ defmodule Phoenix.Endpoint.Supervisor do
     end
   end
 
-  # TODO: Handlers -> Phoenix.Server
-  # TODO: Each transport should have its own tree
+  # TODO v1.4: Handlers -> Phoenix.Server
+  # TODO v1.4: Each transport should have its own tree
   defp server_children(mod, conf, server?) do
     if server? do
       server = Module.concat(mod, "Server")
@@ -114,7 +110,6 @@ defmodule Phoenix.Endpoint.Supervisor do
 
   defp defaults(otp_app, module) do
     [otp_app: otp_app,
-     handler: Phoenix.Endpoint.CowboyHandler,
 
      # Compile-time config
      code_reloader: false,
@@ -252,12 +247,26 @@ defmodule Phoenix.Endpoint.Supervisor do
   The result is wrapped in a `{:cache | :nocache, value}` tuple so
   the Phoenix.Config layer knows how to cache it.
   """
+  @invalid_local_url_chars ["\\"]
+
+  def static_path(_endpoint, "//" <> _ = path) do
+    raise_invalid_path(path)
+  end
+
   def static_path(_endpoint, "/" <> _ = path) do
-    {:nocache, path}
+    if String.contains?(path, @invalid_local_url_chars) do
+      raise ArgumentError, "unsafe characters detected for path #{inspect path}"
+    else
+      {:nocache, path}
+    end
   end
 
   def static_path(_endpoint, path) when is_binary(path) do
-    raise ArgumentError, "static_path/2 expects a path starting with / as argument"
+    raise_invalid_path(path)
+  end
+
+  defp raise_invalid_path(path) do
+    raise ArgumentError, "expected a path starting with a single / but got #{inspect path}"
   end
 
   # TODO v1.4: Deprecate {:system, env_var}
@@ -305,8 +314,8 @@ defmodule Phoenix.Endpoint.Supervisor do
       if File.exists?(outer) do
         manifest =
           outer
-          |> File.read!
-          |> Poison.decode!
+          |> File.read!()
+          |> Phoenix.json_library().decode!()
 
         manifest["latest"]
       else

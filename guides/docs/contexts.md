@@ -122,7 +122,7 @@ If we follow the "Back" link, we get a list of all users, which should contain t
 
 That little `phx.gen.html` command packed a surprising punch. We got a lot of functionality out-of-the-box for creating, updating, and deleting users. This is far from a full-featured app, but remember, generators are first and foremost learning tools and a starting point for you to begin building real features. Code generation can't solve all your problems, but it will teach you the ins and outs of Phoenix and nudge you towards the proper mind-set when designing your application.
 
-Let's first checkout the `UserController` that was generated in `lib/hello_web/controllers/user_controller.ex`:
+Let's first check out the `UserController` that was generated in `lib/hello_web/controllers/user_controller.ex`:
 
 
 ```elixir
@@ -160,7 +160,7 @@ We've seen how controllers work in our [controller guide](controllers.html), so 
 
 In the case of our `create` action, when we successfully create a user, we use `Phoenix.Controller.put_flash/2` to show a success message, and then we redirect to the `user_path`'s show page. Conversely, if `Accounts.create_user/1` fails, we render our `"new.html"` template and pass along the Ecto changeset for the template to lift error messages from.
 
-Next, let's dig deeper and checkout our `Accounts` context in `lib/hello/accounts/accounts.ex`:
+Next, let's dig deeper and check out our `Accounts` context in `lib/hello/accounts/accounts.ex`:
 
 ```elixir
 defmodule Hello.Accounts do
@@ -308,7 +308,7 @@ Generated hello app
 [info]  == Migrated in 0.0s
 ```
 
-Before we integrate credentials in the web layer, we need to let our context know how to associate users and credentials. First, open up `lib/accounts/user.ex` and add the following association:
+Before we integrate credentials in the web layer, we need to let our context know how to associate users and credentials. First, open up `lib/hello/accounts/user.ex` and add the following association:
 
 
 ```elixir
@@ -420,7 +420,7 @@ We used Ecto's `belongs_to` and `has_one` associations to wire-up how our data i
 
 - alias Hello.Accounts.Credential
 ```
-We updated the functions to pipe our user changeset into `Ecto.Changeset.cast_assoc/2`. Ecto's `cast_assoc/2` allows us to tell the changeset how to cast user input to a schema relation. We also used the `:with` option to tell Ecto to use our `Credential.changeset/2` function to cast the data. This way, any validations we perform in `Credential.changeset/2` will be applied when saving the `User` changeset.
+We updated the functions to pipe our user changeset into `Ecto.Changeset.cast_assoc/3`. Ecto's `cast_assoc/3` allows us to tell the changeset how to cast user input to a schema relation. We also used the `:with` option to tell Ecto to use our `Credential.changeset/2` function to cast the data. This way, any validations we perform in `Credential.changeset/2` will be applied when saving the `User` changeset.
 
 Finally, if you visit `http://localhost:4000/users/new` and attempt to save an empty email address, you'll see the proper validation error message. If you enter valid information, the data will be casted and persisted properly.
 
@@ -818,7 +818,7 @@ Next, let's add the association in the other direction in `lib/hello/cms/author.
 
 We added the `has_many` association for author pages, and then introduced our data dependency on the `Accounts` context by wiring up the `belongs_to` association to our `Accounts.User` schema.
 
-With our associations in place, let's update our `CMS` context to require an author when creating or updating a page. We'll start off with data fetching changes. Open up your `CMS` context in `lib/hello/cms/cms.ex` and replace the `list_pages/0`, and `get_page!/1` functions with the following definitions:
+With our associations in place, let's update our `CMS` context to require an author when creating or updating a page. We'll start off with data fetching changes. Open up your `CMS` context in `lib/hello/cms/cms.ex` and replace the `list_pages/0`, `get_page!/1`, and `get_author!/1` functions with the following definitions:
 
 ```elixir
   alias Hello.CMS.{Page, Author}
@@ -905,12 +905,13 @@ Open up your generated `lib/hello_web/controllers/cms/page_controller.ex` and ma
 
 We added two new plugs to our `CMS.PageController`. The first plug, `:require_existing_author`, runs for every action in this controller. The `require_existing_author/2` plug calls into our `CMS.ensure_author_exists/1` and passes in the `current_user` from the connection assigns. After finding or creating the author, we use `Plug.Conn.assign/3` to place a `:current_author` key into the assigns for use downstream.
 
-Next, we added an `:authorized_page` plug that makes use of plug's guard clause feature where we can limit the plug to only certain actions. The definition for our `authorize_page/2` plug first fetches the page from the connection params, then does an authorization check against the `current_author`. If our current author's ID matches the fetched page ID, we have verified the page's owner is accessing the page and we simply assign the `page` into the connection assigns to be used in the controller action. If our authorization fails, we add a flash error message, redirect to the page index screen, and then call `Plug.Conn.halt/1` to prevent the plug pipeline from continuing and invoking the controller action.
+Next, we added an `:authorize_page` plug that makes use of plug's guard clause feature where we can limit the plug to only certain actions. The definition for our `authorize_page/2` plug first fetches the page from the connection params, then does an authorization check against the `current_author`. If our current author's ID matches the fetched page ID, we have verified the page's owner is accessing the page and we simply assign the `page` into the connection assigns to be used in the controller action. If our authorization fails, we add a flash error message, redirect to the page index screen, and then call `Plug.Conn.halt/1` to prevent the plug pipeline from continuing and invoking the controller action.
 
 With our new plugs in place, we can now modify our `create`, `edit`, `update`, and `delete` actions to make use of the new values in the connection assigns:
 
 ```elixir
-  def edit(conn, _) do
+- def edit(conn, %{"id" => id}) do
++ def edit(conn, _) do
 -   page = CMS.get_page!(id)
 -   changeset = CMS.change_page(page)
 +   changeset = CMS.change_page(conn.assigns.page)
@@ -918,8 +919,7 @@ With our new plugs in place, we can now modify our `create`, `edit`, `update`, a
 +   render(conn, "edit.html", changeset: changeset)
   end
 
-- def create(conn, %{"id" => id, "page" => page_params}) do
-+ def create(conn, %{"page" => page_params}) do
+  def create(conn, %{"page" => page_params}) do
 -   case CMS.create_page(page_params) do
 +   case CMS.create_page(conn.assigns.current_author, page_params) do
       {:ok, page} ->

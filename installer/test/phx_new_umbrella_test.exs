@@ -1,7 +1,7 @@
 Code.require_file "mix_helper.exs", __DIR__
 
 defmodule Mix.Tasks.Phx.New.UmbrellaTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import MixHelper
 
   @app "phx_umb"
@@ -39,6 +39,7 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
 
       assert_file app_path(@app, "README.md")
       assert_file app_path(@app, ".gitignore")
+      assert_file app_path(@app, ".gitignore"), "#{@app}-*.tar"
       assert_file( app_path(@app, ".gitignore"), ~r/\n$/)
       assert_file web_path(@app, "README.md")
       assert_file root_path(@app, "mix.exs"), fn file ->
@@ -58,6 +59,7 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
       end
       assert_file app_path(@app, "config/config.exs"), fn file ->
         assert file =~ "ecto_repos: [PhxUmb.Repo]"
+        assert file =~ "config :ecto, :json_library, Jason"
         refute file =~ "namespace"
         refute file =~ "config :phx_blog_web, :generators"
       end
@@ -65,6 +67,7 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
         assert file =~ "ecto_repos: [PhxUmb.Repo]"
         assert file =~ ":phx_umb_web, PhxUmbWeb.Endpoint"
         assert file =~ "generators: [context_app: :phx_umb]\n"
+        assert file =~ "config :phoenix, :json_library, Jason"
       end
 
       assert_file web_path(@app, "config/prod.exs"), fn file ->
@@ -73,13 +76,16 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
       end
 
       assert_file app_path(@app, "lib/#{@app}/application.ex"), ~r/defmodule PhxUmb.Application do/
-      assert_file app_path(@app, "lib/#{@app}/application.ex"), ~r/supervisor\(PhxUmb.Repo, \[\]\)/
+      assert_file app_path(@app, "lib/#{@app}/application.ex"), ~r/PhxUmb.Repo/
       assert_file app_path(@app, "lib/#{@app}.ex"), ~r/defmodule PhxUmb do/
       assert_file app_path(@app, "mix.exs"), ~r/mod: {PhxUmb.Application, \[\]}/
       assert_file app_path(@app, "test/test_helper.exs")
 
       assert_file web_path(@app, "lib/#{@app}_web/application.ex"), ~r/defmodule PhxUmbWeb.Application do/
-      assert_file web_path(@app, "mix.exs"), ~r/mod: {PhxUmbWeb.Application, \[\]}/
+      assert_file web_path(@app, "mix.exs"), fn file ->
+        assert file =~ "mod: {PhxUmbWeb.Application, []}"
+        assert file =~ "{:jason, \"~> 1.0\"}"
+      end
       assert_file web_path(@app, "lib/#{@app}_web.ex"), fn file ->
         assert file =~ "defmodule PhxUmbWeb do"
         assert file =~ "use Phoenix.View, root: \"lib/phx_umb_web/templates\""
@@ -105,10 +111,12 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
       assert_file web_path(@app, "test/#{@app}_web/views/page_view_test.exs"),
                   "defmodule PhxUmbWeb.PageViewTest"
 
-      # Brunch
-      assert_file web_path(@app, ".gitignore"), "/node_modules"
+      # webpack
+      assert_file web_path(@app, ".gitignore"), "/assets/node_modules/"
+      assert_file web_path(@app, ".gitignore"), "#{@app}_web-*.tar"
       assert_file( web_path(@app, ".gitignore"),  ~r/\n$/)
-      assert_file web_path(@app, "assets/brunch-config.js"), ~s("js/app.js": ["js/app"])
+      assert_file web_path(@app, "assets/webpack.config.js"), "js/app.js"
+      assert_file web_path(@app, "assets/.babelrc"), "env"
       assert_file web_path(@app, "config/dev.exs"), fn file ->
         assert file =~ "watchers: [node:"
         assert file =~ "lib/#{@app}_web/views/.*(ex)"
@@ -187,14 +195,14 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
 
   test "new without defaults" do
     in_tmp "new without defaults", fn ->
-      Mix.Tasks.Phx.New.run([@app, "--umbrella", "--no-html", "--no-brunch", "--no-ecto"])
+      Mix.Tasks.Phx.New.run([@app, "--umbrella", "--no-html", "--no-webpack", "--no-ecto"])
 
-      # No Brunch
-      refute File.read!(web_path(@app, ".gitignore")) |> String.contains?("/node_modules")
+      # No webpack
+      refute File.read!(web_path(@app, ".gitignore")) |> String.contains?("/assets/node_modules/")
       assert_file( web_path(@app, ".gitignore"),  ~r/\n$/)
       assert_file web_path(@app, "config/dev.exs"), ~r/watchers: \[\]/
 
-      # No Brunch & No Html
+      # No webpack & No HTML
       refute_file web_path(@app, "priv/static/css/app.css")
       refute_file web_path(@app, "priv/static/favicon.ico")
       refute_file web_path(@app, "priv/static/images/phoenix.png")
@@ -210,12 +218,16 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
       assert_file app_path(@app, "config/config.exs"), fn file ->
         refute file =~ "config :phx_blog_web, :generators"
         refute file =~ "ecto_repos:"
+        refute file =~ "config :ecto, :json_library, Jason"
       end
       assert_file web_path(@app, "config/config.exs"), fn file ->
         refute file =~ "config :phx_blog_web, :generators"
       end
 
-      assert_file web_path(@app, "config/dev.exs"), &refute(&1 =~ config)
+      assert_file web_path(@app, "config/dev.exs"), fn file ->
+        refute file =~ config
+        assert file =~ "config :phoenix, :plug_init_mode, :runtime"
+      end
       assert_file web_path(@app, "config/test.exs"), &refute(&1 =~ config)
       assert_file web_path(@app, "config/prod.secret.exs"), &refute(&1 =~ config)
 
@@ -245,9 +257,9 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
     end
   end
 
-  test "new with no_brunch" do
-    in_tmp "new with no_brunch", fn ->
-      Mix.Tasks.Phx.New.run([@app, "--umbrella", "--no-brunch"])
+  test "new with no_webpack" do
+    in_tmp "new with no_webpack", fn ->
+      Mix.Tasks.Phx.New.run([@app, "--umbrella", "--no-webpack"])
 
       assert_file web_path(@app, ".gitignore")
       assert_file( web_path(@app, ".gitignore"),  ~r/\n$/)
@@ -479,10 +491,11 @@ defmodule Mix.Tasks.Phx.New.UmbrellaTest do
         assert_file "another/lib/another/templates/layout/app.html.eex",
                     "<title>Hello Another!</title>"
 
-        # Brunch
-        assert_file "another/.gitignore", "/node_modules"
+        # webpack
+        assert_file "another/.gitignore", "/assets/node_modules"
         assert_file "another/.gitignore",  ~r/\n$/
-        assert_file "another/assets/brunch-config.js", ~s("js/app.js": ["js/app"])
+        assert_file "another/assets/webpack.config.js", "js/app.js"
+        assert_file "another/assets/.babelrc", "env"
         assert_file "another/config/dev.exs", "watchers: [node:"
         assert_file "another/assets/static/favicon.ico"
         assert_file "another/assets/static/images/phoenix.png"

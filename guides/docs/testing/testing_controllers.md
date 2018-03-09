@@ -17,7 +17,7 @@ However, *don't* actually run this command. Instead, we're going to explore test
 If you haven't already done so, first create a blank project by running:
 
 ```console
-$ mix phx.new hello -y
+$ mix phx.new hello
 ```
 
 Change into the newly-created `hello` directory, configure your database in `config/dev.exs` and then run:
@@ -134,9 +134,10 @@ defmodule HelloWeb.UserControllerTest do
     # create users local to this database connection and test
     [{:ok, user1},{:ok, user2}] = Enum.map(users, &Accounts.create_user(&1))
 
-    response = conn
-    |> get(user_path(conn, :index))
-    |> json_response(200)
+    response =
+      conn
+      |> get(user_path(conn, :index))
+      |> json_response(200)
 
     expected = %{
       "data" => [
@@ -149,9 +150,9 @@ defmodule HelloWeb.UserControllerTest do
   end
 ```
 
-Let's take a look at what's going on here. First we alias `Hello.Accounts`, the context module that provides us with our repository manipulation functions. When we use the `HelloWeb.ConnCase` module, it sets things up such that each connection is wrapped in a transaction, *and* all of the database interactions inside of the test use the same database connection and transaction. This module also sets up a `conn` attribute in our ExUnit context, using `Phoenix.ConnCase/build_conn/0`m we pattern match this to use it in each test case. For details, take a look at the file `test/support/conn_case.ex`, as well as the [Ecto documentation for SQL.Sandbox](https://hexdocs.pm/ecto/Ecto.Adapters.SQL.Sandbox.html). We could put a `build_conn/0` call inside of each test, but it is cleaner to use a setup block to do it.
+Let's take a look at what's going on here. First we alias `Hello.Accounts`, the context module that provides us with our repository manipulation functions. When we use the `HelloWeb.ConnCase` module, it sets things up such that each connection is wrapped in a transaction, *and* all of the database interactions inside of the test use the same database connection and transaction. This module also sets up a `conn` attribute in our ExUnit context, using `Phoenix.ConnCase/build_conn/0`. We then pattern match this to use it in each test case. For details, take a look at the file `test/support/conn_case.ex`, as well as the [Ecto documentation for SQL.Sandbox](https://hexdocs.pm/ecto/Ecto.Adapters.SQL.Sandbox.html). We could put a `build_conn/0` call inside of each test, but it is cleaner to use a setup block to do it.
 
-The index test then hooks into the context to extract the contents of the `conn:` key. We then create two users using the `Hello.Accounts.create_user/1` function. Again, note that this function accesses the test repo, but even though we don't pass the `conn` variable to the call, it still uses the same connection and puts these new users inside the same database transaction. Next the `conn` is piped to a `get` function to make a `GET` request to our `UserController` index action, which is in turn piped into `json_response/2` along with the expected HTTP status code. This will return the JSON from the response body, when everything is wired up properly. We represent the JSON we want the controller action to return with the variable `expected`, and assert that the `response` and `expected` are the same.
+The index test then hooks into the context to extract the contents of the `:conn` key. We then create two users using the `Hello.Accounts.create_user/1` function. Again, note that this function accesses the test repo, but even though we don't pass the `conn` variable to the call, it still uses the same connection and puts these new users inside the same database transaction. Next the `conn` is piped to a `get` function to make a `GET` request to our `UserController` index action, which is in turn piped into `json_response/2` along with the expected HTTP status code. This will return the JSON from the response body, when everything is wired up properly. We represent the JSON we want the controller action to return with the variable `expected`, and assert that the `response` and `expected` are the same.
 
 Our expected data is a JSON response with a top level key of `"data"` containing an array of users that have `"name"` and `"email"` properties that should match the users created before making the request. Also, we do not want the users' "password" properties to show up in our JSON response.
 
@@ -252,10 +253,10 @@ Our show tests currently look like this:
   end
 ```
 
-Run this test only by running the following command: (if your show tests don't start on line 40, change the line number accordingly)
+Run this test only by running the following command: (if your show tests don't start on line 34, change the line number accordingly)
 
 ```console
-$ mix test test/hello_web/controllers/user_controller_test.exs:40
+$ mix test test/hello_web/controllers/user_controller_test.exs:34
 ```
 
 Our first `show/2` test result is, as expected, not implemented. Let's build a test around what we think a successful `show/2` should look like.
@@ -264,11 +265,12 @@ Our first `show/2` test result is, as expected, not implemented. Let's build a t
 test "Responds with user info if the user is found", %{conn: conn} do
   {:ok, user} = Accounts.create_user(%{name: "John", email: "john@example.com", password: "john pass"})
 
-  response = conn
-  |> get(user_path(conn, :show, user.id))
-  |> json_response(200)
+  response =
+    conn
+    |> get(user_path(conn, :show, user.id))
+    |> json_response(200)
 
-  expected = %{ "data" => %{"email" => user.email, "name" => user.name} }
+  expected = %{"data" => %{"email" => user.email, "name" => user.name}}
 
   assert response == expected
 end
@@ -298,11 +300,12 @@ describe "show/2" do
   setup [:create_user]
   test "Responds with user info if the user is found", %{conn: conn, user: user} do
 
-    response = conn
-    |> get(user_path(conn, :show, user.id))
-    |> json_response(200)
+    response =
+      conn
+      |> get(user_path(conn, :show, user.id))
+      |> json_response(200)
 
-    expected = %{ "data" => %{"email" => user.email, "name" => user.name} }
+    expected = %{"data" => %{"email" => user.email, "name" => user.name}}
 
     assert response == expected
   end
@@ -319,11 +322,12 @@ Finally, let's change our `index/2` test to also use the new `create_user` funct
     setup [:create_user]
     test "index/2 responds with all Users", %{conn: conn, user: user} do
 
-      response = conn
-      |> get(user_path(conn, :index))
-      |> json_response(200)
+      response =
+        conn
+        |> get(user_path(conn, :index))
+        |> json_response(200)
 
-      expected = %{ "data" => [%{ "name" => user.name, "email" => user.email }] }
+      expected = %{"data" => [%{"name" => user.name, "email" => user.email}]}
 
       assert response == expected
     end
@@ -389,24 +393,19 @@ Walking through our TDD steps, we add a test that supplies a non-existent user i
 
 ```elixir
 test "Responds with a message indicating user not found", %{conn:  conn} do
-  response =
-    conn
-    |> get(user_path(conn, :show, -1 ))
-    |> json_response(404)
+  conn = get(conn, user_path(conn, :show, -1))
 
-  expected = %{ "errors" => "User not found." }
-
-  assert response == expected
+  assert text_response(conn, 404) =~ "User not found"
 end
 ```
 
-We want a HTTP code of 404 to notify the requester that this resource was not found, as well as an accompanying error message. You can run this test now to see what happens. You should see that an `Ecto.NoResultsError` is thrown, because there is no such user in the database.
+We want a HTTP status code of 404 to notify the requester that this resource was not found, as well as an accompanying error message. Notice that we use [`text_response/2`](https://hexdocs.pm/phoenix/Phoenix.ConnTest.html#text_response/2) instead of [`json_response/2`](https://hexdocs.pm/phoenix/Phoenix.ConnTest.html#json_response/2) to assert that the status code is 404 and the response body matches the accompanying error message. You can run this test now to see what happens. You should see that an `Ecto.NoResultsError` is thrown, because there is no such user in the database.
 
 Our controller action needs to handle the error thrown by Ecto. We have two choices here. By default, this will be handled by the [phoenix_ecto](https://github.com/phoenixframework/phoenix_ecto) library, returning a 404. However if we want to show a custom error message, we can create a new `get_user/1` function that does not throw an Ecto error. For this example, we'll take the second path and implement a new `get_user/1` function in the file `lib/hello/accounts/accounts.ex`, just before the `get_user!/1` function:
 
 ```elixir
 @doc """
-Gets a single `%User{}` from the data store  where the primary key matches the
+Gets a single `%User{}` from the data store where the primary key matches the
 given id.
 
 Returns `nil` if no result was found.
@@ -431,18 +430,19 @@ def show(conn, %{"id" => id}) do
     nil ->
       conn
       |> put_status(:not_found)
-      |> json(%{error: "User not found"})
+      |> text("User not found")
+
     user ->
       render(conn, "show.json", user: user)
   end
 end
 ```
 
-The second branch of the case statement handles the "happy path" we've already covered.
+The first branch of the case statement handles the `nil` result case. First, we use the [`put_status/2`](https://hexdocs.pm/plug/Plug.Conn.html#put_status/2) function from `Plug.Conn` to set the desired error status. The complete list of allowed codes can be found in the [Plug.Conn.Status documentation](https://hexdocs.pm/plug/Plug.Conn.Status.html), where we can see that `:not_found` corresponds to our desired "404" status. We then return a text response using [`text/2`](https://hexdocs.pm/phoenix/Phoenix.Controller.html#text/2).
 
-The first branch of the case statement handles the `nil` result case. First, we use the [`put_status/2`](https://hexdocs.pm/plug/Plug.Conn.html#put_status/2) function from `Plug.Conn` to set the desired error status. The complete list of allowed codes can be found in the [Plug.Conn.Status documentation](https://hexdocs.pm/plug/Plug.Conn.Status.html), where we can see that `:not_found` corresponds to our desired "404" status. We then return a JSON error.
+The second branch of the case statement handles the "happy path" we've already covered. Phoenix also allows us to only implement the "happy path" in our action and use `Phoenix.Controller.action_fallback/1`. This is useful for centralizing your error handling code. You may wish to refactor the show action to use action_fallback as covered in the "Action Fallback" section of the [controllers guide](controllers.html#action-fallback).
 
-With those implemented, our tests pass.
+With those implemented, our tests pass. 
 
 The rest of the controller is left for you to implement as practice. If you are not sure where to begin, it is worth using the Phoenix JSON generator and seeing what tests are automatically generated for you.
 

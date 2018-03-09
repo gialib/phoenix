@@ -4,7 +4,7 @@ Phoenix is a web development framework written in Elixir which implements the se
 
 Phoenix provides the best of both worlds - high developer productivity _and_ high application performance. It also has some interesting new twists like channels for implementing realtime features and pre-compiled templates for blazing speed.
 
-If you are already familiar with Elixir, great! If not, there are a number of places to learn. The [Elixir guides](https://elixir-lang.org/getting-started/introduction.html) are a great place to start. We also have a list of helpful resources in the [Learning Elixir and Erlang Guide](learning.html).
+If you are already familiar with Elixir, great! If not, there are a number of places to learn. The [Elixir guides](https://elixir-lang.org/getting-started/introduction.html) and the [Elixir learning resources page](https://elixir-lang.org/learning.html) are two great places to start. We also have a list of helpful resources to [learn more about Phoenix and some of the projects it depends on](learning.html).
 
 The aim of this introductory guide is to present a brief, high-level overview of Phoenix, the parts that make it up, and the layers underneath that support it.
 
@@ -35,7 +35,8 @@ Phoenix is made up of a number of distinct parts, each with its own purpose and 
     - act as a presentation layer
     - define helper functions, available in templates, to decorate data for presentation
  - [Templates](templates.html)
-    - are what they sound like :)
+    - files containing the contents that will be served in a response
+    - provide the basic structure for a response, and allow dynamic data to be substituted in
     - are precompiled and fast
  - [Channels](channels.html)
     - manage sockets for easy realtime communication

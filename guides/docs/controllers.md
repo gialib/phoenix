@@ -20,7 +20,7 @@ The first line below the module definition invokes the `__using__/1` macro of th
 
 The `PageController` gives us the `index` action to display the Phoenix welcome page associated with the default route Phoenix defines in the router.
 
-### Actions
+## Actions
 Controller actions are just functions. We can name them anything we like as long as they follow Elixir's naming rules. The only requirement we must fulfill is that the action name matches a route defined in the router.
 
 For example, in `lib/hello_web/router.ex` we could change the action name in the default route that Phoenix gives us in a new app from index:
@@ -83,7 +83,7 @@ Of course, there are many other data access options. [Ets](http://www.erlang.org
 
 The data world is your oyster, but we won't be covering these options in these guides.
 
-### Flash Messages
+## Flash Messages
 
 There are times when we need to communicate with users during the course of an action. Maybe there was an error updating a schema. Maybe we just want to welcome them back to the application. For this, we have flash messages.
 
@@ -118,7 +118,7 @@ When we reload the [Welcome Page](http://localhost:4000/), our messages should a
 
 Besides `put_flash/3` and `get_flash/2`, the `Phoenix.Controller` module has another useful function worth knowing about. `clear_flash/1` takes only `conn` and removes any flash messages which might be stored in the session.
 
-### Rendering
+## Rendering
 
 Controllers have several ways of rendering content. The simplest is to render some plain text using the `text/2` function which Phoenix provides.
 
@@ -131,7 +131,7 @@ end
 ```
 Assuming we had a route for `get "/our_path/:id"` mapped to this `show` action, going to `/our_path/15` in your browser should display `Showing id 15` as plain text without any HTML.
 
-A step beyond this is rendering pure JSON with the `json/2` function. We need to pass it something that the [Poison library](https://github.com/devinus/poison) can parse into JSON, such as a map. (Poison is one of Phoenix's dependencies.)
+A step beyond this is rendering pure JSON with the `json/2` function. We need to pass it something that the [Jason library](https://github.com/michalmuskala/jason) can decode into JSON, such as a map. (Jason is one of Phoenix's dependencies.)
 
 ```elixir
 def show(conn, %{"id" => id}) do
@@ -279,7 +279,7 @@ The `Phoenix.Controller` module provides the `put_layout/2` function for us to s
 In a freshly generated Phoenix app, edit the `index` action of the `PageController` module `lib/hello_web/controllers/page_controller.ex` to look like this.
 
 ```elixir
-def index(conn, params) do
+def index(conn, _params) do
   conn
   |> put_layout(false)
   |> render("index.html")
@@ -304,7 +304,7 @@ where your argument replaces `conn` as the first argument, one of the first thin
 This is fine.
 
 ```elixir
-def index(conn, params) do
+def index(conn, _params) do
   conn
   |> put_layout(false)
   |> render("index.html")
@@ -314,7 +314,7 @@ end
 Whereas this won't work.
 
 ```elixir
-def index(conn, params) do
+def index(conn, _params) do
   conn
   |> put_layout false
   |> render "index.html"
@@ -330,10 +330,10 @@ Now let's actually create another layout and render the index template into it. 
 Then, pass the basename of the new layout into `put_layout/2` in our `index` action in `lib/hello_web/controllers/page_controller.ex`.
 
 ```elixir
-def index(conn, params) do
+def index(conn, _params) do
   conn
   |> put_layout("admin.html")
-  |> render "index.html"
+  |> render("index.html")
 end
 ```
 When we load the page, we should be rendering the admin layout without a logo.
@@ -420,7 +420,7 @@ For a list of valid content mime-types, please see the [mime.types](https://gith
 
 We can also set the HTTP status code of a response similarly to the way we set the content type. The `Plug.Conn` module, imported into all controllers, has a `put_status/2` function to do this.
 
-`put_status/2` takes `conn` as the first parameter and as the second parameter either an integer or a "friendly name" used as an atom for the status code we want to set. Here is the list of supported [friendly names](https://github.com/elixir-lang/plug/blob/v1.3.0/lib/plug/conn/status.ex#L9-L69).
+`put_status/2` takes `conn` as the first parameter and as the second parameter either an integer or a "friendly name" used as an atom for the status code we want to set. Here is the list of supported [friendly names](https://github.com/elixir-lang/plug/blob/v1.3.0/lib/plug/conn/status.ex#L9-L69). Please note that the rule to convert a "friendly name" to an atom follows [this rule](https://github.com/elixir-plug/plug/blob/v1.3.0/lib/plug/conn/status.ex#L74-L77). For example, `I'm a teapot` becomes `:im_a_teapot`.
 
 Let's change the status in our `PageController` `index` action.
 
@@ -457,7 +457,7 @@ def index(conn, _params) do
 end
 ```
 
-### Redirection
+## Redirection
 
 Often, we need to redirect to a new url in the middle of a request. A successful `create` action, for instance, will usually redirect to the `show` action for the schema we just created. Alternately, it could redirect to the `index` action to show all the things of that same type. There are plenty of other cases where redirection is useful as well.
 
@@ -539,7 +539,7 @@ def index(conn, _params) do
 end
 ```
 
-### Action Fallback
+## Action Fallback
 
 Action Fallback allows us to centralize error handling code in plugs which are called when a controller action fails to return a `Plug.Conn.t`. These plugs receive both the conn which was originally passed to the controller action along with the return value of the action.
 
@@ -549,6 +549,7 @@ Let's say we have a `show` action which uses `with` to fetch a blog post and the
 defmodule HelloWeb.MyController do
   use Phoenix.Controller
   alias Hello.{Authorizer, Blog}
+  alias HelloWeb.ErrorView
 
   def show(conn, %{"id" => id}, current_user) do
     with {:ok, post} <- Blog.fetch_post(id),
@@ -613,16 +614,16 @@ defmodule HelloWeb.MyController do
 end
 ```
 
-### Halting the Plug Pipeline
+## Halting the Plug Pipeline
 
 As we mentioned - Controllers are plugs.... specifically plugs which are called toward the end of the plug pipeline.  At any step of the pipeline we might have cause to stop processing - typically because we've redirected or rendered a response. `Plug.Conn.t` has a `:halted` key - setting it to true will cause downstream plugs to be skipped. We can do that easily using `Plug.Conn.halt/1`.
 
-Consider a `HelloWeb.PostFinder` plug. On call, if we find a post related to a given id then we add it to `assigns`; and if we don't find the post we respond with a 404 page.
+Consider a `HelloWeb.PostFinder` plug. On call, if we find a post related to a given id then we add it to `conn.assigns`; and if we don't find the post we respond with a 404 page.
 
 ```elixir
 defmodule HelloWeb.PostFinder do
   use Plug
-  import Plog.Conn
+  import Plug.Conn
 
   alias Hello.Blog
 
@@ -677,4 +678,3 @@ It's also important to note that halting will only stop the plug pipeline from c
   . . .
   end
 ```
-

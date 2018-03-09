@@ -10,13 +10,10 @@ defmodule Phoenix.Mixfile do
       elixir: "~> 1.4",
       deps: deps(),
       package: package(),
+      lockfile: lockfile(),
       preferred_cli_env: [docs: :docs],
-
-      # Because we define protocols on the fly to test
-      # Phoenix.Param, we need to disable consolidation
-      # for the test environment for Elixir v1.2 onward.
       consolidate_protocols: Mix.env != :test,
-      xref: [exclude: [Ecto.Type]],
+      xref: [exclude: [Ecto.Type, :ranch, {:cowboy_req, :compact, 1}]],
 
       name: "Phoenix",
       docs: [
@@ -50,27 +47,36 @@ defmodule Phoenix.Mixfile do
         format_encoders: [],
         filter_parameters: ["password"],
         serve_endpoints: false,
-        gzippable_exts: ~w(.js .css .txt .text .html .json .svg)
+        gzippable_exts: ~w(.js .css .txt .text .html .json .svg .eot .ttf)
       ]
     ]
   end
 
   defp deps do
     [
-      {:cowboy, "~> 1.0", optional: true},
-      {:plug, "~> 1.3.3 or ~> 1.4"},
+      {:cowboy, "~> 1.0 or ~> 2.2.2 or ~> 2.3", optional: true},
+      # TODO v1.4: release bump to 1.5.0 stable when it goes out with `init_mode` support
+      {:plug, "~> 1.5.0-rc2", override: true},
       {:phoenix_pubsub, "~> 1.0"},
-      {:poison, "~> 2.2 or ~> 3.0"},
-      {:gettext, "~> 0.8", only: :test},
+      {:jason, "~> 1.0", optional: true},
 
       # Docs dependencies
-      {:ex_doc, "~> 0.17.1", only: :docs},
+      {:ex_doc, "~> 0.18", only: :docs},
       {:inch_ex, "~> 0.2", only: :docs},
 
       # Test dependencies
+      {:gettext, "~> 0.8", only: :test},
+      # TODO v1.4: release bump to next stable release with relaxed plug dep
       {:phoenix_html, "~> 2.10", only: :test},
       {:websocket_client, git: "https://github.com/jeremyong/websocket_client.git", only: :test}
     ]
+  end
+
+  defp lockfile() do
+    case System.get_env("COWBOY_VERSION") do
+      "1" <> _ -> "mix-cowboy1.lock"
+      _ -> "mix.lock"
+    end
   end
 
   defp package do
@@ -102,6 +108,7 @@ defmodule Phoenix.Mixfile do
       "guides/docs/views.md",
       "guides/docs/templates.md",
       "guides/docs/channels.md",
+      "guides/docs/presence.md",
       "guides/docs/ecto.md",
       "guides/docs/contexts.md",
       "guides/docs/phoenix_mix_tasks.md",

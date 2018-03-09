@@ -9,15 +9,10 @@ defmodule <%= app_module %>.Application do
   """
   use Application
 
-  def start(_type, _args) do
-    import Supervisor.Spec, warn: false
-
-    <%= if ecto do %>
+  def start(_type, _args) do<%= if ecto do %>
     Supervisor.start_link([
-      supervisor(<%= app_module %>.Repo, []),
-    ], strategy: :one_for_one, name: <%= app_module %>.Supervisor)
-    <% else %>
-    Supervisor.start_link([], strategy: :one_for_one, name: <%= app_module %>.Supervisor)
-    <% end %>
+      <%= app_module %>.Repo,
+    ], strategy: :one_for_one, name: <%= app_module %>.Supervisor)<% else %>
+    Supervisor.start_link([], strategy: :one_for_one, name: <%= app_module %>.Supervisor)<% end %>
   end
 end

@@ -1,3 +1,5 @@
+# Presence
+
 Phoenix Presence is a feature which allows you to register process information on a topic and replicate it transparently across a cluster. It's a combination of both a server-side and client-side library which makes it simple to implement. A simple use-case would be showing which users are currently online in an application.
 
 Phoenix Presence is special for a number of reasons. It has no single point of failure, no single source of truth, relies entirely on the standard library with no operational dependencies and self heals. This is all handled with a conflict-free replicated data type (CRDT) protocol.
@@ -99,7 +101,7 @@ We can use the included `Presence.syncState()` and `Presence.syncDiff()` methods
 
 When we want to iterate the users, we use the `Presences.list()` function which takes a presences object and a callback function. The callback will be called for each presence item with 2 arguments, the presence id and a list of metas (one for each presence for that presence id). We use this to display the users and the number of devices they are online with.
 
-We can see presence working by adding the following to `assets/js/app.js`;
+We can see presence working by adding the following to `assets/js/app.js`:
 
 ```javascript
 import {Socket, Presence} from "phoenix"
@@ -109,14 +111,14 @@ let socket = new Socket("/socket", {
 })
 
 function renderOnlineUsers(presences) {
-  let response = "";
+  let response = ""
 
   Presence.list(presences, (id, {metas: [first, ...rest]}) => {
     let count = rest.length + 1
     response += `<br>${id} (count: ${count})</br>`
-  });
+  })
 
-  document.querySelector("main[role=main]").innerHTML = response;
+  document.querySelector("main[role=main]").innerHTML = response
 }
 
 socket.connect()

@@ -20,6 +20,7 @@ defmodule Phx.New.Single do
     {:eex,  "phx_single/lib/app_name_web.ex",           :project, "lib/:lib_web_name.ex"},
     {:eex,  "phx_single/mix.exs",                       :project, "mix.exs"},
     {:eex,  "phx_single/README.md",                     :project, "README.md"},
+    {:eex,  "phx_single/gitignore",                     :project, ".gitignore"},
     {:eex,  "phx_test/support/channel_case.ex",         :project, "test/support/channel_case.ex"},
     {:eex,  "phx_test/support/conn_case.ex",            :project, "test/support/conn_case.ex"},
     {:eex,  "phx_single/test/test_helper.exs",          :project, "test/test_helper.exs"},
@@ -41,16 +42,16 @@ defmodule Phx.New.Single do
     {:eex,  "phx_ecto/data_case.ex",         :project, "test/support/data_case.ex"},
   ]
 
-  template :brunch, [
-    {:text, "phx_assets/brunch/gitignore",        :project, ".gitignore"},
-    {:eex,  "phx_assets/brunch/brunch-config.js", :project, "assets/brunch-config.js"},
-    {:text, "phx_assets/app.css",                 :project, "assets/css/app.css"},
-    {:text, "phx_assets/phoenix.css",             :project, "assets/css/phoenix.css"},
-    {:eex,  "phx_assets/brunch/app.js",           :project, "assets/js/app.js"},
-    {:eex,  "phx_assets/brunch/socket.js",        :project, "assets/js/socket.js"},
-    {:eex,  "phx_assets/brunch/package.json",     :project, "assets/package.json"},
-    {:text, "phx_assets/robots.txt",              :project, "assets/static/robots.txt"},
-    {:keep, "phx_assets/vendor",                  :project, "assets/vendor"},
+  template :webpack, [
+    {:eex,  "phx_assets/webpack/webpack.config.js", :project, "assets/webpack.config.js"},
+    {:text,  "phx_assets/webpack/babelrc",          :project, "assets/.babelrc"},
+    {:text, "phx_assets/app.css",                   :project, "assets/css/app.css"},
+    {:text, "phx_assets/phoenix.css",               :project, "assets/css/phoenix.css"},
+    {:eex,  "phx_assets/webpack/app.js",            :project, "assets/js/app.js"},
+    {:eex,  "phx_assets/webpack/socket.js",         :project, "assets/js/socket.js"},
+    {:eex,  "phx_assets/webpack/package.json",      :project, "assets/package.json"},
+    {:text, "phx_assets/robots.txt",                :project, "assets/static/robots.txt"},
+    {:keep, "phx_assets/vendor",                    :project, "assets/vendor"},
   ]
 
   template :html, [
@@ -64,12 +65,9 @@ defmodule Phx.New.Single do
     {:eex, "phx_test/views/page_view_test.exs",              :project, "test/:lib_web_name/views/page_view_test.exs"},
   ]
 
-  template :bare, [
-    {:text, "phx_assets/bare/gitignore", :project, ".gitignore"},
-  ]
+  template :bare, []
 
   template :static, [
-    {:text,   "phx_assets/bare/gitignore", :project, ".gitignore"},
     {:text,   "phx_assets/app.css",        :project, "priv/static/css/app.css"},
     {:append, "phx_assets/phoenix.css",    :project, "priv/static/css/app.css"},
     {:text,   "phx_assets/bare/app.js",    :project, "priv/static/js/app.js"},
@@ -110,8 +108,8 @@ defmodule Phx.New.Single do
     if Project.ecto?(project), do: gen_ecto(project)
     if Project.html?(project), do: gen_html(project)
 
-    case {Project.brunch?(project), Project.html?(project)} do
-      {true, _}      -> gen_brunch(project)
+    case {Project.webpack?(project), Project.html?(project)} do
+      {true, _}      -> gen_webpack(project)
       {false, true}  -> gen_static(project)
       {false, false} -> gen_bare(project)
     end
@@ -135,8 +133,8 @@ defmodule Phx.New.Single do
     create_file Path.join(web_path, "priv/static/favicon.ico"), phoenix_favicon_text()
   end
 
-  defp gen_brunch(%Project{web_path: web_path} = project) do
-    copy_from project, __MODULE__, :brunch
+  defp gen_webpack(%Project{web_path: web_path} = project) do
+    copy_from project, __MODULE__, :webpack
     create_file Path.join(web_path, "assets/static/images/phoenix.png"), phoenix_png_text()
     create_file Path.join(web_path, "assets/static/favicon.ico"), phoenix_favicon_text()
   end

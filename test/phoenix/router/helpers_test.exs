@@ -39,7 +39,7 @@ defmodule Phoenix.Router.HelpersTest do
   end
 
   defp build(kind, verb, path, host, controller, action, helper) do
-    Phoenix.Router.Route.build(kind, verb, path, host, controller, action, helper, [], %{}, %{})
+    Phoenix.Router.Route.build(1, kind, verb, path, host, controller, action, helper, [], %{}, %{})
   end
 
   defp extract_defhelper(route, pos) do
@@ -427,6 +427,24 @@ defmodule Phoenix.Router.HelpersTest do
     assert Helpers.url(conn_with_endpoint()) == "https://example.com"
     assert Helpers.url(socket_with_endpoint()) == "https://example.com"
     assert Helpers.url(uri()) == "https://example.com"
+  end
+
+  test "phoenix_router_url with string takes precedence over endpoint" do
+    url = "https://phoenixframework.org"
+    conn = Phoenix.Controller.put_router_url(conn_with_endpoint(), url)
+
+    assert Helpers.url(conn) == url
+    assert Helpers.admin_message_url(conn, :show, 1) ==
+      url <> "/admin/new/messages/1"
+  end
+
+  test "phoenix_router_url with URI takes precedence over endpoint" do
+    uri = %URI{scheme: "https", host: "phoenixframework.org", port: 123, path: "/path"}
+    conn = Phoenix.Controller.put_router_url(conn_with_endpoint(), uri)
+
+    assert Helpers.url(conn) == "https://phoenixframework.org:123"
+    assert Helpers.admin_message_url(conn, :show, 1) ==
+      "https://phoenixframework.org:123/admin/new/messages/1"
   end
 
   test "helpers module generates a path helper" do
